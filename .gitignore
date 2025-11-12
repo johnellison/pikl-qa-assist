@@ -23,6 +23,10 @@ build/
 *.swo
 .DS_Store
 
+# Claude Code
+.claude/settings.local.json
+.claude/commands/
+
 # Project specific
 recordings/
 results/
