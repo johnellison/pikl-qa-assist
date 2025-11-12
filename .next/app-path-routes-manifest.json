@@ -1,0 +1,16 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/agents/page": "/agents",
+  "/api/analyze/route": "/api/analyze",
+  "/api/calls/[id]/route": "/api/calls/[id]",
+  "/api/calls/route": "/api/calls",
+  "/api/stats/route": "/api/stats",
+  "/api/transcribe/route": "/api/transcribe",
+  "/api/upload/route": "/api/upload",
+  "/calls/[id]/page": "/calls/[id]",
+  "/calls/page": "/calls",
+  "/favicon.ico/route": "/favicon.ico",
+  "/page": "/",
+  "/upload/page": "/upload"
+}

@@ -25,65 +25,75 @@ Pikl's contact center currently faces a 50% compliance failure rate with manual 
 
 ## QA Scoring Framework
 
-Each call is evaluated across 10 categories (scored 0-5):
+Each call is evaluated across 8 dimensions (scored 0-10):
 
-1. Greeting & Identification (10%)
-2. Call Control & Structure (10%)
-3. Active Listening & Empathy (10%)
-4. Questioning & Discovery (10%)
-5. Accuracy of Information (15%)
-6. **Compliance & Disclosures** (15% - critical)
-7. **Handling of Sensitive Data** (10% - critical)
-8. Call Resolution & Next Steps (10%)
-9. Professionalism & Tone (5%)
-10. Documentation Quality (5%)
+1. **Rapport Building** - Connection and trust with customer
+2. **Needs Discovery** - Identifying customer needs and pain points
+3. **Product Knowledge** - Understanding of products/services
+4. **Objection Handling** - Addressing concerns effectively
+5. **Closing Techniques** - Moving toward resolution or next step
+6. **Compliance** - Following required scripts and disclosures
+7. **Professionalism** - Communication quality and demeanor
+8. **Follow-Up** - Setting expectations for next steps
 
-**Pass Requirement:** 70% weighted score AND no critical failures
+**Overall Score:** Average of all 8 dimensions (0-10 scale)
 
 ## Tech Stack
 
-- **Backend:** Python 3.11+ with Flask
-- **Frontend:** Streamlit (Python-based UI)
-- **Transcription:** AssemblyAI API
-- **Analysis:** Anthropic Claude API (Claude 3.5 Sonnet)
-- **Storage:** Local JSON files and file system
+- **Framework:** Next.js 16 with TypeScript
+- **UI:** React 19 with Tailwind CSS
+- **Transcription:** OpenAI Whisper API
+- **Analysis:** Anthropic Claude API (Claude Sonnet 4.5)
+- **Testing:** Vitest with Testing Library
+- **Storage:** Local file system (database integration pending)
 
 ## Project Structure
 
 ```
 pikl-qa-assist/
-├── app.py                 # Main Streamlit application
-├── transcribe.py          # AssemblyAI integration
-├── analyze.py             # Claude API scoring logic
-├── requirements.txt       # Python dependencies
-├── config.py              # API keys and settings
-├── recordings/            # Uploaded audio files
-├── results/               # JSON analysis results
-└── reports/               # Exported reports
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── analyze/        # Claude analysis endpoint
+│   │   │   ├── transcribe/     # Whisper transcription endpoint
+│   │   │   └── upload/         # File upload endpoint
+│   │   ├── layout.tsx          # App layout
+│   │   └── page.tsx            # Home page
+│   ├── components/             # React components
+│   ├── lib/
+│   │   ├── claude-service.ts   # Claude API integration
+│   │   └── whisper-service.ts  # Whisper API integration
+│   └── types/                  # TypeScript type definitions
+├── docs/                       # Documentation
+├── examples/                   # Usage examples
+└── public/                     # Static assets
 ```
 
 ## Installation
 
 ```bash
-# 1. Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# 1. Install dependencies
+npm install
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Set up API keys
+cp .env.example .env
+# Edit .env and add your API keys:
+# - OPENAI_API_KEY (for Whisper transcription)
+# - ANTHROPIC_API_KEY (for Claude analysis)
 
-# 3. Set up API keys in config.py or .env.local
+# 3. Run development server
+npm run dev
 
-# 4. Run the app
-streamlit run app.py
+# 4. Run tests
+npm test
 ```
 
 ## Prerequisites
 
-- Python 3.11 or higher
+- Node.js 18+ and npm
 - API keys for:
-  - [AssemblyAI](https://www.assemblyai.com/) (transcription)
-  - [Anthropic Claude](https://console.anthropic.com/) (analysis)
+  - [OpenAI](https://platform.openai.com/) (Whisper transcription)
+  - [Anthropic](https://console.anthropic.com/) (Claude analysis)
 
 ## Success Metrics
 
@@ -94,10 +104,19 @@ streamlit run app.py
 
 ## Cost Estimate
 
-- **Per call:** ~$0.40 (transcription + analysis)
-- **Prototype phase:** ~$40-50 for 50 test calls
-- **Production estimate:** ~$120/month for 300 calls
-- **ROI:** 15x in labor savings
+**Per Call (5-minute average):**
+- Whisper transcription: ~$0.03
+- Claude Sonnet 4.5 analysis: ~$0.03
+- **Total per call: ~$0.06**
+
+**Production Estimates:**
+- 100 calls/month: ~$6
+- 500 calls/month: ~$30
+- 1000 calls/month: ~$60
+
+**Cost Optimization:**
+- Use Claude Haiku 4.5 for faster/cheaper analysis: ~$0.01/call
+- Use Claude Opus 4.1 for highest accuracy: ~$0.15/call
 
 ## Development Phases
 
@@ -124,10 +143,41 @@ streamlit run app.py
 - Cloud infrastructure
 - Production deployment
 
+## API Usage
+
+### Transcribe Audio
+
+```typescript
+import { transcribeAudio } from '@/lib/whisper-service';
+
+const transcript = await transcribeAudio('/path/to/audio.wav', 'call-123');
+console.log(`Transcribed ${transcript.turns.length} turns`);
+```
+
+### Analyze Transcript
+
+```typescript
+import { analyzeTranscript } from '@/lib/claude-service';
+
+const analysis = await analyzeTranscript(transcript);
+console.log(`Overall Score: ${analysis.overallScore}/10`);
+console.log(`Coaching Points: ${analysis.coachingRecommendations.length}`);
+```
+
+### Full Pipeline Example
+
+```bash
+# Run the full analysis pipeline
+npx tsx examples/analyze-call.ts path/to/audio.wav
+```
+
+See [docs/claude-api-integration.md](docs/claude-api-integration.md) for detailed API documentation.
+
 ## Documentation
 
 - Full PRD available in [PRD.md](PRD.md)
 - Scope decisions in [SCOPE_DECISION.md](SCOPE_DECISION.md)
+- Claude API Integration: [docs/claude-api-integration.md](docs/claude-api-integration.md)
 
 ## License
 

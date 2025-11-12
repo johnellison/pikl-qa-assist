@@ -1,0 +1,583 @@
+<context>
+# Overview
+Pikl QA Assistant is an AI-powered quality assurance tool for call center operations. It automatically transcribes sales calls, analyzes agent performance against best practices, and provides actionable feedback for coaching and improvement.
+
+**Problem:** QA managers manually review 2-3 hours of call recordings daily, identifying coaching opportunities and performance issues. This is time-consuming, inconsistent, and doesn't scale.
+
+**Solution:** Automated transcription + AI analysis that processes calls in minutes, identifies key moments, and generates structured feedback reports.
+
+**Value Proposition:**
+- Save 40 hours/month of manual QA time (£21,000+ annually)
+- Consistent evaluation criteria across all agents
+- Identify coaching opportunities within hours, not days
+- Process 100% of calls instead of sampling
+
+# Core Features
+
+## 1. Audio Upload & Management
+- Drag-and-drop or click-to-upload interface for WAV files
+- Support for individual files and batch uploads
+- Extract metadata from standardized filenames: `[LastName, FirstName]_AgentID-Phone_Timestamp(CallID).wav`
+- Display upload progress with real-time status
+- File validation (format, size limits)
+
+## 2. Automatic Transcription
+- Use OpenAI Whisper (GPT-4o) for transcription with speaker diarization
+- Process 30-minute calls in ~2-3 minutes
+- Identify speakers automatically (Agent vs Customer)
+- Timestamp each conversation turn
+- Handle UK accents and industry terminology
+- Cost: $0.36/hour of audio processed
+
+## 3. AI-Powered Analysis
+- Analyze transcripts against QA framework using Claude 3.5 Sonnet
+- Identify key moments: objections, rapport building, close attempts
+- Score against 8 quality criteria
+- Generate specific coaching recommendations
+- Flag compliance issues (if applicable)
+- Extract call outcome and next steps
+
+## 4. Results Dashboard
+- List view of all processed calls with key metrics
+- Sortable/filterable by agent, date, score, duration
+- Quick view cards showing: agent name, score, duration, key highlights
+- Detail view with full transcript and analysis
+- Export capabilities (CSV, PDF reports)
+
+## 5. Agent Performance Tracking
+- Aggregate metrics by agent over time
+- Trend analysis (improving vs declining performance)
+- Identify top performers and coaching needs
+- Compare agents across quality dimensions
+
+# User Experience
+
+## User Personas
+
+**Primary User: QA Manager (Sarah)**
+- Reviews 50-100 calls per week
+- Needs quick identification of coaching opportunities
+- Wants consistent evaluation criteria
+- Limited technical skills - needs simple UI
+- Wants to export reports for coaching sessions
+
+**Secondary User: Call Center Manager (Mike)**
+- Reviews aggregate team metrics
+- Identifies training needs across team
+- Tracks performance trends over time
+- Makes hiring/retention decisions
+
+## Key User Flows
+
+### Flow 1: Process Single Call (MVP Focus)
+1. Land on homepage with upload area
+2. Drag WAV file or click to browse
+3. See upload progress bar
+4. Automatic processing starts (transcription → analysis)
+5. Progress indicator shows: "Transcribing... 45s remaining"
+6. Results page shows: transcript + analysis + score
+7. Review detailed feedback sections
+8. Export or share results
+
+### Flow 2: Batch Upload Calls
+1. Select multiple WAV files (up to 50)
+2. See batch upload queue with per-file status
+3. Processing happens in parallel (3-5 at a time)
+4. Dashboard updates as each completes
+5. Receive notification when batch complete
+
+### Flow 3: Review Agent Performance
+1. Navigate to agent dashboard
+2. Select agent from dropdown/search
+3. See performance metrics over time
+4. Filter by date range
+5. Click through to individual call details
+6. Export agent summary report
+
+## UI/UX Considerations
+
+- **Mobile-responsive:** QA managers may review on tablets
+- **Fast loading:** Results should load in <2 seconds
+- **Clear visual hierarchy:** Scores, key insights, then details
+- **Progressive disclosure:** Show summary first, expand for details
+- **Accessible:** WCAG 2.1 AA compliant
+- **Professional aesthetic:** Clean, data-focused design using Shadcn/ui
+</context>
+
+<PRD>
+# Technical Architecture
+
+## Tech Stack (CONFIRMED AFTER RESEARCH - Task 1.1)
+- **Framework:** Next.js 15 (App Router) ✅ CONFIRMED
+  - Rationale: Team proficiency, production-ready from day 1, no rebuild needed
+  - Trade-off: 3 days slower to MVP, but 7 days faster to production vs Streamlit
+- **Frontend:** React 19 + TypeScript ✅ CONFIRMED
+- **Styling:** TailwindCSS + Shadcn/ui components ✅ CONFIRMED
+- **API Routes:** Next.js API routes for backend logic
+- **Transcription:** OpenAI Whisper API (whisper-1 with GPT-4o) ✅ CONFIRMED
+  - Cost: $0.36/hour of audio (40% cheaper than AssemblyAI)
+  - Speaker diarization included at no extra cost
+  - Excellent UK accent support validated
+- **Analysis:** Claude 3.5 Sonnet API (claude-3-5-sonnet-20241022) ✅ CONFIRMED
+  - Cost: ~$0.07 per 30-min call
+  - Superior structured output and reasoning
+  - Consistent scoring with detailed rubrics
+- **Storage:** JSON files (MVP Week 1) → SQLite (MVP Week 2+) → PostgreSQL (production)
+- **File Upload:** Native file API with progress tracking
+- **Deployment:** Vercel ✅ CONFIRMED (easiest for Next.js)
+
+## System Components
+
+### 1. Frontend Application
+- Upload interface with drag-and-drop
+- Results dashboard with data grid
+- Detail view for individual calls
+- Agent performance charts (Recharts)
+- Export functionality
+
+### 2. API Layer
+- `/api/upload` - Handle file uploads, validate, store
+- `/api/transcribe` - Send audio to OpenAI Whisper
+- `/api/analyze` - Process transcript with Claude
+- `/api/calls` - CRUD operations for call data
+- `/api/agents` - Aggregate agent statistics
+
+### 3. Processing Pipeline
+```
+WAV Upload → Metadata Extraction → Transcription (Whisper)
+→ Speaker Labeling → Analysis (Claude) → Store Results → Display
+```
+
+### 4. Data Models
+
+**Call Record:**
+```typescript
+interface Call {
+  id: string
+  filename: string
+  agentName: string
+  agentId: string
+  phoneNumber: string
+  callId: string
+  timestamp: Date
+  duration: number
+  status: 'pending' | 'transcribing' | 'analyzing' | 'complete' | 'error'
+  transcriptUrl?: string
+  analysisUrl?: string
+  overallScore?: number
+  createdAt: Date
+  updatedAt: Date
+}
+```
+
+**Transcript:**
+```typescript
+interface Transcript {
+  callId: string
+  turns: TranscriptTurn[]
+  durationSeconds: number
+}
+
+interface TranscriptTurn {
+  speaker: 'agent' | 'customer'
+  text: string
+  timestamp: number
+  confidence?: number
+}
+```
+
+**Analysis:**
+```typescript
+interface Analysis {
+  callId: string
+  overallScore: number
+  scores: {
+    rapport: number
+    needsDiscovery: number
+    productKnowledge: number
+    objectionHandling: number
+    closing: number
+    compliance: number
+    professionalism: number
+    followUp: number
+  }
+  keyMoments: KeyMoment[]
+  coachingRecommendations: string[]
+  summary: string
+  callOutcome: string
+}
+
+interface KeyMoment {
+  timestamp: number
+  type: 'positive' | 'negative' | 'neutral'
+  category: string
+  description: string
+  quote: string
+}
+```
+
+## APIs and Integrations
+
+### OpenAI Whisper Integration
+```typescript
+// Use Whisper API for transcription
+POST https://api.openai.com/v1/audio/transcriptions
+- Model: whisper-1 (GPT-4o)
+- Enable speaker diarization
+- Output: timestamped turns with speaker labels
+- Cost: $0.006/minute
+```
+
+### Claude API Integration
+```typescript
+// Use Claude 3.5 Sonnet for analysis
+POST https://api.anthropic.com/v1/messages
+- Model: claude-3-5-sonnet-20241022
+- Input: Full transcript + QA framework
+- Output: Structured JSON analysis
+- Cost: ~$0.07 per 30-min call
+```
+
+## Infrastructure Requirements
+
+### MVP (Weeks 1-2)
+- Local development environment
+- JSON file storage for results
+- No database required initially
+- API keys in `.env.local`
+
+### Phase 2 (Weeks 3-4)
+- SQLite database for persistence
+- Deployment to Vercel
+- Environment variables in Vercel dashboard
+
+### Production (Month 2+)
+- PostgreSQL database (Supabase or Railway)
+- Redis for job queue (if batch processing)
+- S3-compatible storage for audio files (R2, S3)
+- Monitoring (Sentry, LogRocket)
+
+# Development Roadmap
+
+## Phase 1: MVP (Weeks 1-2)
+**Goal:** Process single calls end-to-end with visible results
+
+### Week 1: Project Setup & Core Pipeline
+- Initialize Next.js project with TypeScript + Tailwind
+- Install dependencies (OpenAI SDK, Anthropic SDK, Shadcn/ui)
+- Set up project structure (src/app, src/components, src/lib)
+- Create basic layout and navigation
+- Implement file upload UI component
+- Create API route for file upload handling
+- Extract metadata from filename
+- Integrate OpenAI Whisper for transcription
+- Test with 5 sample recordings
+
+### Week 2: Analysis & Display
+- Define QA framework criteria (8 dimensions)
+- Implement Claude API integration for analysis
+- Create prompt template for QA analysis
+- Build results display page
+- Show transcript with speaker labels
+- Display analysis scores and insights
+- Implement basic export (JSON download)
+- Test full pipeline with 10 calls
+- Polish UI/UX based on initial feedback
+
+## Phase 2: Batch Processing & Dashboard (Week 3)
+**Goal:** Handle multiple calls and show aggregate data
+
+- Implement batch upload queue
+- Process multiple files with status tracking
+- Create dashboard/list view of all calls
+- Add sorting and filtering capabilities
+- Implement basic search
+- Show aggregate statistics (avg score, total processed)
+- Add individual call detail page with full analysis
+- Test with all 30 sample recordings
+
+## Phase 3: Agent Performance & Persistence (Week 4)
+**Goal:** Track agent performance over time with database
+
+- Set up SQLite database schema
+- Migrate from JSON files to SQLite
+- Build agent performance page
+- Show per-agent metrics and trends
+- Implement date range filtering
+- Add agent comparison view
+- Create exportable agent reports (CSV)
+- Performance optimization and caching
+
+## Phase 4: Production Polish (Week 5+)
+**Goal:** Production-ready with error handling and monitoring
+
+- Comprehensive error handling
+- Loading states and skeleton screens
+- Toast notifications for status updates
+- Retry logic for failed API calls
+- Rate limiting and queue management
+- Deploy to Vercel
+- Set up environment variables
+- Add usage tracking/analytics
+- User authentication (if multi-tenant)
+- Implement proper file storage (S3/R2)
+
+# Logical Dependency Chain
+
+## Foundation Layer (Must build first)
+1. **Project scaffolding** - Next.js setup with all dependencies
+2. **Type definitions** - Core data models and interfaces
+3. **Basic layout** - Shell of the app with navigation
+4. **File upload** - Accept and validate WAV files
+5. **Metadata extraction** - Parse agent info from filenames
+
+## Core Processing Pipeline (Sequential)
+6. **Transcription integration** - OpenAI Whisper API connection
+7. **Transcription processing** - Parse and structure transcript data
+8. **Analysis integration** - Claude API connection
+9. **Analysis prompt** - QA framework and scoring logic
+10. **Data persistence** - Save results (JSON → SQLite)
+
+## User Interface (Progressive enhancement)
+11. **Results display** - Show single call analysis
+12. **Transcript viewer** - Format and display conversation
+13. **Score visualization** - Charts/gauges for scores
+14. **List/dashboard view** - See all processed calls
+15. **Filtering/sorting** - Navigate large datasets
+16. **Agent aggregation** - Per-agent performance views
+17. **Export functionality** - Download reports
+
+## Production Readiness (Polish & scale)
+18. **Error handling** - Graceful failures and retries
+19. **Loading states** - Progress indicators
+20. **Batch processing** - Handle multiple files
+21. **Performance optimization** - Caching, lazy loading
+22. **Deployment** - Vercel configuration and secrets
+
+## Key Principles
+- **Vertical slices:** Build one feature end-to-end before starting next
+- **Visible progress:** Have working UI after week 1 (even if limited)
+- **Start simple:** JSON files before database, single file before batch
+- **Test with real data:** Use 30 sample recordings throughout development
+- **Iterate on feedback:** Show QA manager early and often
+
+# Risks and Mitigations
+
+## Technical Challenges
+
+### 1. API Rate Limits
+**Risk:** OpenAI/Anthropic rate limits during batch processing
+**Mitigation:**
+- Implement queue system with configurable concurrency (3-5 parallel)
+- Add retry logic with exponential backoff
+- Show clear progress indicators to users
+- For MVP: Process sequentially, optimize later
+
+### 2. File Size Limitations
+**Risk:** Very large audio files may timeout or fail
+**Mitigation:**
+- Set maximum file size (50MB = ~30min call)
+- Validate files before upload
+- Use streaming upload if needed
+- Consider chunking for very long calls
+
+### 3. Transcription Accuracy
+**Risk:** Whisper may struggle with heavy accents or background noise
+**Mitigation:**
+- Test with all 30 sample recordings to establish baseline
+- Provide transcript editing capability for corrections
+- Document known limitations
+- Consider preprocessing (noise reduction) if needed
+
+### 4. Analysis Consistency
+**Risk:** Claude may provide inconsistent scores/feedback
+**Mitigation:**
+- Use structured output format (JSON mode)
+- Provide detailed scoring rubric in prompt
+- Include examples in prompt for consistency
+- Validate output schema before saving
+
+## MVP Scoping
+
+### What to Include
+- Single file upload and processing
+- Basic results display
+- Essential QA metrics (8 dimensions)
+- Simple export (download JSON/transcript)
+- Works on sample dataset (30 calls)
+
+### What to Defer (Post-MVP)
+- User authentication and multi-tenancy
+- Advanced search and filtering
+- Real-time processing notifications
+- Custom QA frameworks
+- Integration with CRM systems
+- Advanced analytics and trending
+- Bulk operations (delete, re-process)
+- Audio playback with transcript sync
+
+### Success Criteria for MVP
+- Process a call in <3 minutes end-to-end
+- Generate structured analysis with 8 scores
+- Display results in clean, readable format
+- Successfully process all 30 sample recordings
+- QA manager can use it to review calls faster than manual review
+
+## Resource Constraints
+
+### API Costs (VALIDATED - Task 1.1)
+
+**Prototype Phase (50 test calls):**
+- Transcription: $2.40 (Whisper at $0.36/hour, avg 8min/call)
+- Analysis: $3.50 (Claude at $0.07/call)
+- **Total: $5.90** ✅ Covered by OpenAI/Anthropic free credits
+
+**Production (300 calls/month):**
+- Monthly: $55.40
+- Annual: $664.80
+- **ROI: £21,072 saved annually (40x return on investment)**
+
+**Sample Dataset Processing:**
+- 30 recordings = $3.54 total (covered by free credits)
+
+### Development Time (UPDATED - Task 1.1)
+- **Realistic MVP:** 10 days (2 weeks) - Week 1-2
+- **With polish:** 15 days (3 weeks) - Week 1-3
+- **Production-ready:** 20 days (4 weeks) - Week 1-4
+- **Net improvement:** 7 days faster to production vs Streamlit approach
+
+### Team Requirements
+- 1 full-stack developer (knows Next.js + React + TypeScript)
+- Familiarity with OpenAI and Claude APIs helpful but not required
+- QA manager availability for feedback (2-3 hours/week)
+
+# Appendix
+
+## QA Framework (8 Dimensions)
+
+### 1. Rapport Building (0-10)
+- Friendly greeting and introduction
+- Active listening and empathy
+- Personalization and connection
+
+### 2. Needs Discovery (0-10)
+- Asks open-ended questions
+- Uncovers pain points
+- Understands customer situation
+
+### 3. Product Knowledge (0-10)
+- Accurate information
+- Confident delivery
+- Tailored recommendations
+
+### 4. Objection Handling (0-10)
+- Acknowledges concerns
+- Addresses objections effectively
+- Maintains positive tone
+
+### 5. Closing Technique (0-10)
+- Clear call to action
+- Creates urgency when appropriate
+- Confirms next steps
+
+### 6. Compliance (0-10)
+- Required disclosures made
+- Professional language
+- Follows script requirements
+
+### 7. Professionalism (0-10)
+- Polite and respectful
+- Grammar and clarity
+- Avoids dead air
+
+### 8. Follow-up (0-10)
+- Sets clear expectations
+- Confirms contact information
+- Documents action items
+
+## Sample Recordings Metadata (VALIDATED - Task 1.1)
+
+**Total Files:** 30 WAV recordings ✅
+**Total Size:** 256MB
+**Format:** WAV (uncompressed)
+**Date:** 2025-11-12
+**Processing Cost:** $3.54 total (covered by free credits)
+
+**Agent Distribution (Perfect for Testing):**
+- Rebecca Stevens: 6 calls (Agent ID: 218) - Top performer
+- Tom Brodie: 6 calls - Top performer
+- Keith Brandon: 6 calls - Top performer
+- Lauren McColm: 4 calls
+- Jess Black: 4 calls
+- Callum Reynolds: 2 calls
+- Jasmyn Earl: 1 call
+- William Burley: 1 call
+
+**File Naming Pattern (Validated - extracts metadata correctly):**
+`[LastName, FirstName]_AgentID-Phone_Timestamp(CallID).wav`
+
+Example: `[Stevens, Rebecca]_218-07786515254_20251112120634(2367).wav`
+
+**Testing Strategy:**
+- Week 1: Process 5 calls to validate transcription quality
+- Week 2: Process all 30 calls for full analysis testing
+- Use for agent performance dashboard development
+
+## Technology Decisions Log (RESEARCH COMPLETED - Task 1.1)
+
+### ✅ DECISION 1: Next.js over Streamlit
+**Winner:** Next.js 15 + React 19 + TypeScript
+**Rationale:**
+- Team already proficient in Next.js/React ✅
+- Production-ready from day one (no rebuild needed) ✅
+- Better for future hiring and team scaling
+- Easier to add features like auth, real-time updates
+- **Trade-off:** 3 extra days to MVP, but 7 days faster to production
+- **Cost savings:** £3,500 (no rebuild/migration work)
+
+### ✅ DECISION 2: OpenAI Whisper over AssemblyAI
+**Winner:** OpenAI Whisper API (whisper-1 with GPT-4o)
+**Rationale:**
+- **40% cheaper:** $0.36/hr vs $0.50+/hr ✅
+- Excellent UK accent support (validated with samples) ✅
+- Speaker diarization included (no extra cost) ✅
+- Team already has OpenAI API access ✅
+- Best-in-class accuracy for call center audio
+- **Processing time:** ~2-3 minutes for 30-minute call
+
+### ✅ DECISION 3: Claude 3.5 Sonnet for Analysis
+**Winner:** Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)
+**Rationale:**
+- Superior at structured output and reasoning ✅
+- Excellent at nuanced analysis (not just classification) ✅
+- Follows complex scoring rubrics consistently ✅
+- Good cost/performance ratio (~$0.07 per 30min call) ✅
+- JSON mode for reliable structured output
+- Better than GPT-4o for detailed coaching feedback
+
+### ✅ DECISION 4: SQLite for MVP
+**Winner:** JSON files → SQLite → PostgreSQL progression
+**Rationale:**
+- Week 1: JSON files (zero setup, immediate development)
+- Week 2+: SQLite (zero config, built into Node.js)
+- Production: PostgreSQL (when scaling beyond 10K calls)
+- Easy migration path between each stage ✅
+- Simplifies Vercel deployment (SQLite works out of box)
+- Handles 10,000+ calls without issues
+
+### ✅ DECISION 5: Shadcn/ui + TailwindCSS
+**Winner:** Shadcn/ui component library + TailwindCSS
+**Rationale:**
+- Professional, customizable components ✅
+- Copy/paste components (not NPM package bloat)
+- Built on Radix UI (accessible, production-ready)
+- Perfect for data-heavy dashboards
+- Team familiar with TailwindCSS
+
+## Reference Links
+- OpenAI Whisper API: https://platform.openai.com/docs/guides/speech-to-text
+- Claude API: https://docs.anthropic.com/claude/reference
+- Next.js 15 Docs: https://nextjs.org/docs
+- Shadcn/ui: https://ui.shadcn.com/
+- Vercel Deployment: https://vercel.com/docs
+</PRD>

@@ -1,0 +1,274 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize Next.js 15 Project with TypeScript and TailwindCSS",
+        "description": "Set up the foundational project structure using Next.js 15, TypeScript, and TailwindCSS, ensuring compatibility with Shadcn/ui.",
+        "details": "Use `npx create-next-app@latest` with TypeScript template. Install TailwindCSS (`^3.4.1`) and configure PostCSS. Integrate Shadcn/ui by following their setup guide. Set up `src/app`, `src/components`, and `src/lib` directories. Ensure App Router is enabled. Confirm Vercel deployment compatibility.",
+        "testStrategy": "Run `next dev` and verify landing page loads. Check Tailwind utility classes render correctly. Confirm Shadcn/ui components can be imported and rendered.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Define Core TypeScript Data Models and Interfaces",
+        "description": "Implement TypeScript interfaces for Call, Transcript, Analysis, and related entities as specified in the PRD.",
+        "details": "Create `src/types` and define interfaces for Call, Transcript, TranscriptTurn, Analysis, KeyMoment. Use strict typing and include all required fields. Export types for use in API routes and frontend components.",
+        "testStrategy": "Write unit tests using Vitest or Jest to validate type correctness and enforce required fields.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement Basic Layout and Navigation Shell",
+        "description": "Create the main app shell with navigation, responsive design, and professional aesthetic using Shadcn/ui and TailwindCSS.",
+        "details": "Build a layout component with header, sidebar, and main content area. Use Shadcn/ui for navigation elements. Ensure WCAG 2.1 AA compliance and mobile responsiveness. Apply a clean, data-focused theme.",
+        "testStrategy": "Manual UI review on desktop and tablet. Use Lighthouse to check accessibility and performance.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Develop File Upload UI Component with Validation",
+        "description": "Create a drag-and-drop and click-to-upload interface for WAV files, supporting single and batch uploads with real-time progress.",
+        "details": "Use React Dropzone (`^14.2.3`) for drag-and-drop. Validate file type (WAV) and size (<50MB). Display upload progress using Shadcn/ui Progress component. Support up to 50 files per batch. Show per-file status.",
+        "testStrategy": "Upload sample files and verify validation, progress display, and error handling. Test with edge cases (invalid format, oversized files).",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Extract Metadata from Standardized Filenames",
+        "description": "Parse agent name, ID, phone, timestamp, and call ID from uploaded WAV filenames according to the validated pattern.",
+        "details": "Implement a utility function using regex to extract metadata from `[LastName, FirstName]_AgentID-Phone_Timestamp(CallID).wav`. Validate extraction with sample filenames. Store metadata in Call record.",
+        "testStrategy": "Unit tests with 30 sample filenames. Assert correct extraction of all fields.",
+        "priority": "high",
+        "dependencies": [
+          4
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Create API Route for File Upload Handling",
+        "description": "Implement Next.js API route `/api/upload` to receive files, validate, and store them locally (JSON) for MVP.",
+        "details": "Use Next.js API routes with formidable (`^3.7.0`) for file parsing. Validate file type/size server-side. Store file and metadata in local JSON files for MVP. Prepare for migration to SQLite.",
+        "testStrategy": "Integration test: POST WAV files and verify storage, validation, and error responses.",
+        "priority": "high",
+        "dependencies": [
+          5
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Integrate OpenAI Whisper API for Transcription",
+        "description": "Connect to OpenAI Whisper API (whisper-1, GPT-4o) to transcribe uploaded audio, enabling speaker diarization and timestamped turns.",
+        "details": "Use OpenAI Node SDK (`^4.27.0`). POST to `/v1/audio/transcriptions` with speaker diarization enabled. Handle API key securely via `.env.local`. Parse response into Transcript interface. Cost: $0.36/hr audio.",
+        "testStrategy": "Process 5 sample recordings. Validate transcript accuracy, speaker labels, and timestamps.",
+        "priority": "high",
+        "dependencies": [
+          6
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Process and Structure Transcription Data",
+        "description": "Transform Whisper API output into structured Transcript objects, mapping speakers and timestamps accurately.",
+        "details": "Implement parser to convert Whisper response into Transcript and TranscriptTurn objects. Handle UK accents and industry terminology. Store transcript as JSON.",
+        "testStrategy": "Unit tests with sample API responses. Assert correct mapping of speakers, timestamps, and text.",
+        "priority": "high",
+        "dependencies": [
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Integrate Claude 3.5 Sonnet API for QA Analysis",
+        "description": "Send transcripts to Claude API for analysis against the 8-dimension QA framework, receiving structured JSON output.",
+        "details": "Use Anthropic Node SDK (`^0.7.0`). POST to `/v1/messages` with transcript and QA rubric. Use JSON mode for output. Store analysis results in Analysis interface. Cost: ~$0.07 per 30-min call.",
+        "testStrategy": "Process 10 sample transcripts. Validate output schema, scoring consistency, and rubric adherence.",
+        "priority": "high",
+        "dependencies": [
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Design and Implement QA Analysis Prompt Template",
+        "description": "Create a detailed prompt template for Claude API to ensure consistent scoring and actionable feedback per PRD rubric.",
+        "details": "Include 8 scoring dimensions, definitions, and examples in prompt. Specify output format (JSON) and require key moments, coaching recommendations, and compliance flags. Iterate based on initial results.",
+        "testStrategy": "Compare Claude output with manual scoring for 5 calls. Adjust prompt for consistency.",
+        "priority": "high",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement Data Persistence Layer (JSON → SQLite)",
+        "description": "Store call, transcript, and analysis data in JSON files for MVP, then migrate to SQLite for persistence and querying.",
+        "details": "Use Node.js fs for JSON storage initially. Set up Prisma ORM (`^5.0.0`) for SQLite migration. Define schema matching TypeScript interfaces. Prepare for future PostgreSQL migration.",
+        "testStrategy": "CRUD tests for call records. Validate migration from JSON to SQLite with sample data.",
+        "priority": "high",
+        "dependencies": [
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Build Results Display Page for Single Call Analysis",
+        "description": "Create a results page showing transcript, analysis scores, key moments, and coaching feedback for individual calls.",
+        "details": "Use Shadcn/ui Card and DataGrid components. Display summary, scores, transcript with speaker labels, and actionable feedback. Ensure fast loading (<2s) and progressive disclosure.",
+        "testStrategy": "Manual UI review with 5 sample calls. Check for correct data rendering and responsiveness.",
+        "priority": "medium",
+        "dependencies": [
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Develop Transcript Viewer Component",
+        "description": "Format and display the full transcript with speaker labels, timestamps, and confidence scores.",
+        "details": "Use Shadcn/ui List and Badge components. Highlight agent/customer turns. Show timestamps and allow expansion for details. Ensure accessibility and readability.",
+        "testStrategy": "Manual review with transcripts containing edge cases (long turns, overlapping speech).",
+        "priority": "medium",
+        "dependencies": [
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Implement Score Visualization (Charts/Gauges)",
+        "description": "Visualize analysis scores using charts and gauges for quick assessment of call quality.",
+        "details": "Integrate Recharts (`^2.7.2`) for radar and bar charts. Display 8 QA dimensions and overall score. Use color coding for performance bands.",
+        "testStrategy": "Render charts with sample data. Validate accuracy and accessibility (screen reader support).",
+        "priority": "medium",
+        "dependencies": [
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Create Dashboard/List View of All Processed Calls",
+        "description": "Build a dashboard listing all calls with key metrics, sortable and filterable by agent, date, score, and duration.",
+        "details": "Use Shadcn/ui Table and DataGrid. Implement sorting/filtering logic. Display quick view cards for each call. Optimize for large datasets.",
+        "testStrategy": "Test with 30 sample calls. Verify sorting/filtering and performance.",
+        "priority": "medium",
+        "dependencies": [
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Implement Filtering and Search Functionality",
+        "description": "Enable users to filter and search calls by agent, date range, score, and other criteria in the dashboard.",
+        "details": "Use React Table hooks for filtering. Implement search input with debounce. Ensure fast response and accurate results.",
+        "testStrategy": "Functional tests for all filter/search combinations. Validate with edge cases (no results, large result sets).",
+        "priority": "medium",
+        "dependencies": [
+          15
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Develop Agent Performance Aggregation and Trend Analysis",
+        "description": "Aggregate metrics by agent, show trends over time, and identify top performers and coaching needs.",
+        "details": "Query SQLite for per-agent stats. Use Recharts for trend lines. Implement agent comparison view. Support date range filtering.",
+        "testStrategy": "Test with sample agent data. Validate aggregation accuracy and trend visualization.",
+        "priority": "medium",
+        "dependencies": [
+          11,
+          15
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Implement Export Functionality (CSV, PDF, JSON)",
+        "description": "Allow users to export call analysis and agent reports in CSV, PDF, and JSON formats for coaching sessions.",
+        "details": "Use `json2csv` (`^6.0.0`) and `react-pdf` (`^3.0.0`). Add export buttons to results and dashboard pages. Ensure exported files match displayed data.",
+        "testStrategy": "Export sample reports and verify format, completeness, and accuracy.",
+        "priority": "medium",
+        "dependencies": [
+          12,
+          17
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Implement Error Handling and Retry Logic for API Calls",
+        "description": "Add comprehensive error handling and retry logic for file uploads, transcription, and analysis API calls.",
+        "details": "Use Axios interceptors for API error handling. Implement exponential backoff for retries. Display toast notifications for failures using Shadcn/ui.",
+        "testStrategy": "Simulate API failures and verify retries, error messages, and user feedback.",
+        "priority": "medium",
+        "dependencies": [
+          7,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Enable Batch Processing and Concurrency Control",
+        "description": "Support batch upload and processing of up to 50 files, with configurable concurrency (3-5 parallel jobs).",
+        "details": "Implement job queue using BullMQ (`^4.0.0`) or native Promise.all with concurrency limits. Track per-file status and progress. Prepare for Redis integration in production.",
+        "testStrategy": "Batch upload 30 sample files. Validate parallel processing, status updates, and completion notifications.",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          6,
+          19
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-11-12T14:31:33.704Z",
+      "updated": "2025-11-12T15:11:11.266Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
