@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeTranscript, estimateAnalysisCost } from '@/lib/claude-service';
-import { saveAnalysis, updateCall, getTranscript } from '@/lib/storage';
+import { saveAnalysis, updateCall, getTranscript, getCallById } from '@/lib/storage';
+import { createQALogEntry, upsertQALogEntry } from '@/lib/qa-log-service';
 import type { Transcript, AnalysisResponse, ApiResponse } from '@/types';
 
 /**
@@ -85,6 +86,18 @@ export async function POST(request: NextRequest) {
       overallScore: analysis.overallScore,
       analysisUrl: `/data/analyses/${transcript.callId}.json`,
     });
+
+    // Create QA Log entry
+    try {
+      const call = await getCallById(transcript.callId);
+      if (call) {
+        const qaLogEntry = await createQALogEntry(call, analysis);
+        await upsertQALogEntry(qaLogEntry);
+      }
+    } catch (qaError) {
+      console.error('Failed to create QA Log entry:', qaError);
+      // Don't fail the whole analysis if QA Log creation fails
+    }
 
     // Return analysis results
     const response: AnalysisResponse & { estimatedCost: number } = {

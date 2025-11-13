@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Integrate OpenAI Whisper API for Transcription
+# Status: done
+# Dependencies: 6
+# Priority: high
+# Description: Connect to OpenAI Whisper API (whisper-1, GPT-4o) to transcribe uploaded audio, enabling speaker diarization and timestamped turns.
+# Details:
+Use OpenAI Node SDK (`^4.27.0`). POST to `/v1/audio/transcriptions` with speaker diarization enabled. Handle API key securely via `.env.local`. Parse response into Transcript interface. Cost: $0.36/hr audio.
+
+# Test Strategy:
+Process 5 sample recordings. Validate transcript accuracy, speaker labels, and timestamps.

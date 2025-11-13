@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Upload, TrendingUp, Users, CheckCircle2 } from "lucide-react";
+import { BarChart3, Upload, TrendingUp, Users, CheckCircle2, ShieldCheck, FileText } from "lucide-react";
 
 export default function Home() {
   const [stats, setStats] = useState({
@@ -138,6 +138,18 @@ export default function Home() {
               <Button className="w-full" variant="outline">
                 <BarChart3 className="mr-2 h-4 w-4" />
                 View All Calls
+              </Button>
+            </Link>
+            <Link href="/reports/qa-log">
+              <Button className="w-full" variant="outline">
+                <FileText className="mr-2 h-4 w-4" />
+                QA Log (Master Register)
+              </Button>
+            </Link>
+            <Link href="/admin/compliance-rules">
+              <Button className="w-full" variant="outline">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Compliance Rules Manager
               </Button>
             </Link>
           </CardContent>

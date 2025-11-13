@@ -1,0 +1,11 @@
+# Task ID: 6
+# Title: Create API Route for File Upload Handling
+# Status: done
+# Dependencies: 5
+# Priority: high
+# Description: Implement Next.js API route `/api/upload` to receive files, validate, and store them locally (JSON) for MVP.
+# Details:
+Use Next.js API routes with formidable (`^3.7.0`) for file parsing. Validate file type/size server-side. Store file and metadata in local JSON files for MVP. Prepare for migration to SQLite.
+
+# Test Strategy:
+Integration test: POST WAV files and verify storage, validation, and error responses.

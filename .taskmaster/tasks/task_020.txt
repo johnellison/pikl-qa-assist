@@ -1,0 +1,11 @@
+# Task ID: 20
+# Title: Enable Batch Processing and Concurrency Control
+# Status: pending
+# Dependencies: 4, 6, 19
+# Priority: medium
+# Description: Support batch upload and processing of up to 50 files, with configurable concurrency (3-5 parallel jobs).
+# Details:
+Implement job queue using BullMQ (`^4.0.0`) or native Promise.all with concurrency limits. Track per-file status and progress. Prepare for Redis integration in production.
+
+# Test Strategy:
+Batch upload 30 sample files. Validate parallel processing, status updates, and completion notifications.

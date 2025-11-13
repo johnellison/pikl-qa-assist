@@ -23,6 +23,8 @@ export interface Call {
   transcriptUrl?: string;
   analysisUrl?: string;
   overallScore?: number;
+  callType?: 'new_business_sales' | 'renewals' | 'mid_term_adjustment' | 'claims_inquiry' | 'complaints' | 'general_inquiry';
+  complianceScore?: number; // Average of UK compliance dimensions
   createdAt: Date;
   updatedAt: Date;
   errorMessage?: string;

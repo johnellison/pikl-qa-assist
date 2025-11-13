@@ -26,6 +26,8 @@ export type {
   KeyMoment,
   KeyMomentType,
   ScoringCriteria,
+  CallType,
+  ComplianceIssue,
 } from './analysis';
 
 // Storage types

@@ -1,0 +1,11 @@
+# Task ID: 14
+# Title: Implement Score Visualization (Charts/Gauges)
+# Status: pending
+# Dependencies: 12
+# Priority: medium
+# Description: Visualize analysis scores using charts and gauges for quick assessment of call quality.
+# Details:
+Integrate Recharts (`^2.7.2`) for radar and bar charts. Display 8 QA dimensions and overall score. Use color coding for performance bands.
+
+# Test Strategy:
+Render charts with sample data. Validate accuracy and accessibility (screen reader support).

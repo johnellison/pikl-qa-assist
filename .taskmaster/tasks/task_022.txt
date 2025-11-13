@@ -1,0 +1,49 @@
+# Task ID: 22
+# Title: Evaluate and Recommend Optimal Speaker Diarization Solution for Insurance QA System
+# Status: pending
+# Dependencies: 21
+# Priority: medium
+# Description: Conduct a comprehensive evaluation of leading speaker diarization solutions for insurance sales call QA, comparing accuracy, cost, integration, and compliance, and recommend the best fit for >95% speaker attribution accuracy.
+# Details:
+1. **Define Evaluation Criteria:**
+   - Diarization Error Rate (DER) for 2-speaker scenarios (target: >95% attribution accuracy)
+   - Cost structure (per hour/minute, monthly estimate for 100 calls × 8 min)
+   - API integration complexity and compatibility with existing Whisper-based transcription
+   - Processing speed (real-time or batch, latency)
+   - Performance in noisy environments, overlapping speech, and short utterances
+   - Support for UK English accents
+   - Availability of speaker embeddings/voice fingerprints
+   - Deployment options (cloud vs on-premise)
+   - GDPR and UK insurance compliance
+
+2. **Research and Compare Solutions:**
+   - Evaluate AssemblyAI, Deepgram, Speechmatics, Gladia (Whisper+Pyannote), Pyannote Audio, Rev.ai, Azure Speech Services, and others as relevant[1][2][4][9].
+   - Collect latest DER benchmarks, especially for noisy, overlapping, and short-utterance scenarios[1][9].
+   - Document pricing models and estimate monthly costs for projected call volume.
+   - Assess API documentation, SDKs, and ease of integration with current Whisper pipeline (can diarization be added post-transcription, or is full replacement needed?)[1].
+   - Identify which solutions offer speaker embeddings/voice fingerprints and their utility for agent/customer identification.
+   - Review deployment models and compliance certifications (SOC2, GDPR, UK-specific requirements)[1][2][4].
+
+3. **Implementation Feasibility:**
+   - For top 2-3 candidates, outline integration approach: keep Whisper for transcription and add diarization, or replace with all-in-one solution.
+   - Rate implementation complexity (1-5 scale) based on API, SDK, and infrastructure requirements.
+   - Identify risks of speaker misattribution and mitigation strategies (e.g., manual review, confidence thresholds).
+
+4. **Recommendation Report:**
+   - Summarize findings in a comparison table (DER, cost, speed, compliance, integration, deployment, UK accent support).
+   - Recommend the optimal solution with rationale, estimated accuracy improvement over current heuristics, monthly cost, and risk assessment.
+   - Provide a high-level integration plan and next steps for pilot implementation.
+
+**Best practices:**
+- Use recent (2024-2025) benchmarks and vendor documentation.
+- Engage with vendor support for clarifications on compliance and deployment.
+- Consider open-source (Pyannote) for maximum control, but weigh against maintenance and support needs.
+- Ensure all recommendations are defensible for HR/legal review and compliance audits.
+
+# Test Strategy:
+1. Validate that the evaluation covers all required criteria (accuracy, cost, integration, compliance, etc.) for each shortlisted solution.
+2. Confirm that DER and accuracy metrics are sourced from recent (2024-2025) benchmarks and are relevant to 2-speaker, noisy, and short-utterance scenarios.
+3. Review cost calculations for accuracy based on current vendor pricing and projected call volume.
+4. Ensure the recommendation includes a clear rationale, estimated accuracy improvement, cost, implementation complexity, and risk assessment.
+5. Peer review the report for completeness, clarity, and actionable next steps.
+6. Present findings to stakeholders (QA, compliance, engineering) for feedback and sign-off.

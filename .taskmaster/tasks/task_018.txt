@@ -1,0 +1,11 @@
+# Task ID: 18
+# Title: Implement Export Functionality (CSV, PDF, JSON)
+# Status: pending
+# Dependencies: 12, 17
+# Priority: medium
+# Description: Allow users to export call analysis and agent reports in CSV, PDF, and JSON formats for coaching sessions.
+# Details:
+Use `json2csv` (`^6.0.0`) and `react-pdf` (`^3.0.0`). Add export buttons to results and dashboard pages. Ensure exported files match displayed data.
+
+# Test Strategy:
+Export sample reports and verify format, completeness, and accuracy.

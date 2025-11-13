@@ -1,0 +1,11 @@
+# Task ID: 13
+# Title: Develop Transcript Viewer Component
+# Status: done
+# Dependencies: 12
+# Priority: medium
+# Description: Format and display the full transcript with speaker labels, timestamps, and confidence scores.
+# Details:
+Use Shadcn/ui List and Badge components. Highlight agent/customer turns. Show timestamps and allow expansion for details. Ensure accessibility and readability.
+
+# Test Strategy:
+Manual review with transcripts containing edge cases (long turns, overlapping speech).

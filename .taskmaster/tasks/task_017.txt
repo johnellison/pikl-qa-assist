@@ -1,0 +1,11 @@
+# Task ID: 17
+# Title: Develop Agent Performance Aggregation and Trend Analysis
+# Status: pending
+# Dependencies: 11, 15
+# Priority: medium
+# Description: Aggregate metrics by agent, show trends over time, and identify top performers and coaching needs.
+# Details:
+Query SQLite for per-agent stats. Use Recharts for trend lines. Implement agent comparison view. Support date range filtering.
+
+# Test Strategy:
+Test with sample agent data. Validate aggregation accuracy and trend visualization.

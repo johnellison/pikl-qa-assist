@@ -1,0 +1,11 @@
+# Task ID: 15
+# Title: Create Dashboard/List View of All Processed Calls
+# Status: done
+# Dependencies: 11
+# Priority: medium
+# Description: Build a dashboard listing all calls with key metrics, sortable and filterable by agent, date, score, and duration.
+# Details:
+Use Shadcn/ui Table and DataGrid. Implement sorting/filtering logic. Display quick view cards for each call. Optimize for large datasets.
+
+# Test Strategy:
+Test with 30 sample calls. Verify sorting/filtering and performance.

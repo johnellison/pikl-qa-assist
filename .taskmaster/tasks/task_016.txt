@@ -1,0 +1,11 @@
+# Task ID: 16
+# Title: Implement Filtering and Search Functionality
+# Status: pending
+# Dependencies: 15
+# Priority: medium
+# Description: Enable users to filter and search calls by agent, date range, score, and other criteria in the dashboard.
+# Details:
+Use React Table hooks for filtering. Implement search input with debounce. Ensure fast response and accurate results.
+
+# Test Strategy:
+Functional tests for all filter/search combinations. Validate with edge cases (no results, large result sets).

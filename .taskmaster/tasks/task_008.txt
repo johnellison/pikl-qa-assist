@@ -1,0 +1,11 @@
+# Task ID: 8
+# Title: Process and Structure Transcription Data
+# Status: done
+# Dependencies: 7
+# Priority: high
+# Description: Transform Whisper API output into structured Transcript objects, mapping speakers and timestamps accurately.
+# Details:
+Implement parser to convert Whisper response into Transcript and TranscriptTurn objects. Handle UK accents and industry terminology. Store transcript as JSON.
+
+# Test Strategy:
+Unit tests with sample API responses. Assert correct mapping of speakers, timestamps, and text.

@@ -1,0 +1,11 @@
+# Task ID: 5
+# Title: Extract Metadata from Standardized Filenames
+# Status: done
+# Dependencies: 4
+# Priority: high
+# Description: Parse agent name, ID, phone, timestamp, and call ID from uploaded WAV filenames according to the validated pattern.
+# Details:
+Implement a utility function using regex to extract metadata from `[LastName, FirstName]_AgentID-Phone_Timestamp(CallID).wav`. Validate extraction with sample filenames. Store metadata in Call record.
+
+# Test Strategy:
+Unit tests with 30 sample filenames. Assert correct extraction of all fields.

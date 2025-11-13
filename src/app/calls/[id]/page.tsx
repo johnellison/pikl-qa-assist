@@ -25,11 +25,14 @@ import {
   Lightbulb,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
 } from 'lucide-react';
 import type { Call, Transcript, Analysis } from '@/types';
+import type { QALogEntry } from '@/types/qa-log';
 import { getScoreColor, getScoreBgColor, getScoreLabel, getScoreVariant, getProgressColor } from '@/lib/score-utils';
 import { AgentAvatar } from '@/components/agent-avatar';
 import { AudioPlayer, AudioPlayerRef } from '@/components/audio-player';
+import { exportCallToPDF, exportCallToCSV } from '@/lib/export-utils';
 
 export default function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,6 +40,7 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
   const [call, setCall] = useState<Call | null>(null);
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [qaLogEntry, setQaLogEntry] = useState<QALogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedDimensions, setExpandedDimensions] = useState<Record<string, boolean>>({});
@@ -64,6 +68,21 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
         setCall(data.data.call);
         setTranscript(data.data.transcript);
         setAnalysis(data.data.analysis);
+
+        // Fetch QA Log entry if available
+        try {
+          const qaLogResponse = await fetch(`/api/qa-log`);
+          const qaLogData = await qaLogResponse.json();
+          if (qaLogData.success) {
+            const entry = qaLogData.data.entries.find((e: QALogEntry) => e.callId === id);
+            if (entry) {
+              setQaLogEntry(entry);
+            }
+          }
+        } catch (qaError) {
+          console.error('Error fetching QA Log entry:', qaError);
+          // Don't fail the whole page if QA Log fetch fails
+        }
       } else {
         setError(data.error || 'Failed to load call data');
       }
@@ -112,6 +131,64 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
     compliance: 'Compliance',
     professionalism: 'Professionalism',
     followUp: 'Follow-Up',
+    callOpeningCompliance: 'Call Opening Compliance',
+    dataProtectionCompliance: 'Data Protection Compliance',
+    mandatoryDisclosures: 'Mandatory Disclosures',
+    tcfCompliance: 'TCF Compliance',
+    salesProcessCompliance: 'Sales Process Compliance',
+    complaintsHandling: 'Complaints Handling',
+  };
+
+  // Helper function to generate regulatory reference links
+  const getRegulatoryLink = (reference: string): string | null => {
+    // GDPR Articles
+    if (reference.includes('GDPR Article')) {
+      const match = reference.match(/Article (\d+)/i);
+      if (match) {
+        return `https://gdpr-info.eu/art-${match[1]}-gdpr/`;
+      }
+    }
+
+    // FCA Handbook sections
+    if (reference.includes('ICOBS')) {
+      const match = reference.match(/ICOBS ([\d.]+)/i);
+      if (match) {
+        return `https://www.handbook.fca.org.uk/handbook/ICOBS/${match[1]}.html`;
+      }
+    }
+
+    if (reference.includes('PRIN')) {
+      const match = reference.match(/PRIN (\d+)/i);
+      if (match) {
+        return `https://www.handbook.fca.org.uk/handbook/PRIN/2/${match[1]}.html`;
+      }
+    }
+
+    if (reference.includes('DISP')) {
+      const match = reference.match(/DISP ([\d.]+)/i);
+      if (match) {
+        return `https://www.handbook.fca.org.uk/handbook/DISP/${match[1]}.html`;
+      }
+    }
+
+    if (reference.includes('SYSC')) {
+      const match = reference.match(/SYSC ([\d.]+)/i);
+      if (match) {
+        return `https://www.handbook.fca.org.uk/handbook/SYSC/${match[1]}.html`;
+      }
+    }
+
+    // DPA 2018
+    if (reference.includes('DPA 2018')) {
+      return 'https://www.legislation.gov.uk/ukpga/2018/12/contents';
+    }
+
+    // IDD
+    if (reference.includes('IDD')) {
+      return 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016L0097';
+    }
+
+    return null;
   };
 
   return (
@@ -147,6 +224,27 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
         <div className="flex gap-2">
+          {/* Export buttons */}
+          {analysis && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportCallToPDF(call, analysis, qaLogEntry || undefined)}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportCallToCSV(call, analysis, qaLogEntry || undefined)}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+            </>
+          )}
           {/* Show re-transcribe button if language is not English */}
           {transcript && transcript.language && transcript.language !== 'english' && transcript.language !== 'en' && (
             <Button
@@ -209,6 +307,13 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
             {analysis.summary && (
               <p className="mt-4 text-muted-foreground">{analysis.summary}</p>
             )}
+            {analysis.callType && (
+              <div className="mt-4 flex items-center gap-2">
+                <Badge variant="outline" className="text-sm">
+                  Call Type: {analysis.callType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </Badge>
+              </div>
+            )}
             {analysis.callOutcome && (
               <div className="mt-4 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -224,12 +329,14 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
       {analysis && (
         <Card>
           <CardHeader>
-            <CardTitle>QA Dimension Scores</CardTitle>
+            <CardTitle>Core QA Dimension Scores</CardTitle>
             <CardDescription>Click any dimension to see details and evidence from the call</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {Object.entries(analysis.scores).map(([key, score]) => {
+              {Object.entries(analysis.scores)
+                .filter(([key]) => !['callOpeningCompliance', 'dataProtectionCompliance', 'mandatoryDisclosures', 'tcfCompliance', 'salesProcessCompliance', 'complaintsHandling'].includes(key))
+                .map(([key, score]) => {
                 const isExpanded = expandedDimensions[key];
                 const dimensionLabel = dimensionLabels[key as keyof typeof dimensionLabels];
 
@@ -366,6 +473,174 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
         </Card>
       )}
 
+      {/* UK Compliance Dimensions */}
+      {analysis && (
+        <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-2xl">🇬🇧</span>
+              UK Compliance Dimensions
+            </CardTitle>
+            <CardDescription>Regulatory compliance scores based on FCA, ICOBS, GDPR, and IDD requirements</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              {Object.entries(analysis.scores)
+                .filter(([key]) => ['callOpeningCompliance', 'dataProtectionCompliance', 'mandatoryDisclosures', 'tcfCompliance', 'salesProcessCompliance', 'complaintsHandling'].includes(key))
+                .map(([key, score]) => {
+                // Handle nullable scores
+                if (score === null) {
+                  return (
+                    <div key={key} className="rounded-lg border border-dashed p-4 bg-muted/50">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-muted-foreground">
+                          {dimensionLabels[key as keyof typeof dimensionLabels]}
+                        </span>
+                        <Badge variant="outline" className="text-muted-foreground">N/A</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Not applicable for this call type
+                      </p>
+                    </div>
+                  );
+                }
+
+                const isExpanded = expandedDimensions[key];
+                const dimensionLabel = dimensionLabels[key as keyof typeof dimensionLabels];
+
+                // Filter key moments for this dimension
+                const relevantMoments = analysis.keyMoments.filter(
+                  (moment) => moment.category === key
+                );
+
+                return (
+                  <Collapsible
+                    key={key}
+                    open={isExpanded}
+                    onOpenChange={(open) =>
+                      setExpandedDimensions((prev) => ({ ...prev, [key]: open }))
+                    }
+                  >
+                    <div className="rounded-lg border p-4 space-y-3 bg-white dark:bg-gray-950">
+                      {/* Dimension Header with Score */}
+                      <CollapsibleTrigger asChild>
+                        <button className="w-full flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity">
+                          <div className="flex items-center gap-3">
+                            {isExpanded ? (
+                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <span className="font-medium text-left">{dimensionLabel}</span>
+                          </div>
+                          <span className={`text-lg font-bold ${getScoreColor(score)}`}>
+                            {score.toFixed(1)}/10
+                          </span>
+                        </button>
+                      </CollapsibleTrigger>
+
+                      {/* Progress Bar */}
+                      <Progress value={score * 10} className={`h-2 ${getProgressColor(score)}`} />
+
+                      {/* Expanded Content */}
+                      <CollapsibleContent className="space-y-4 pt-3">
+                        <Separator />
+
+                        {/* Performance Summary */}
+                        <div className="flex items-start gap-2">
+                          <Badge variant={getScoreVariant(score)} className="mt-0.5">
+                            {getScoreLabel(score)}
+                          </Badge>
+                          <p className="text-sm text-muted-foreground flex-1">
+                            {score >= 8
+                              ? `Strong compliance in ${dimensionLabel.toLowerCase()}`
+                              : score >= 6
+                              ? `Acceptable compliance with room for improvement`
+                              : score >= 4
+                              ? `Compliance issues detected - requires attention`
+                              : `Critical compliance failures - immediate action required`}
+                          </p>
+                        </div>
+
+                        {/* Key Evidence */}
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Key Evidence from Call
+                          </h4>
+                          {relevantMoments.length > 0 ? (
+                            <div className="space-y-2">
+                              {relevantMoments.map((moment, idx) => {
+                                const typeConfig = {
+                                  positive: { bg: 'bg-green-50 dark:bg-green-950/30', icon: '✓', color: 'text-green-700 dark:text-green-300' },
+                                  negative: { bg: 'bg-red-50 dark:bg-red-950/30', icon: '✗', color: 'text-red-700 dark:text-red-300' },
+                                  neutral: { bg: 'bg-gray-50 dark:bg-gray-900/30', icon: '○', color: 'text-gray-700 dark:text-gray-300' },
+                                };
+                                const config = typeConfig[moment.type];
+
+                                return (
+                                  <div key={idx} className={`p-3 rounded ${config.bg} border`}>
+                                    <div className="flex items-start gap-2">
+                                      <button
+                                        onClick={() => handleTimestampClick(moment.timestamp)}
+                                        className="font-mono text-xs font-semibold hover:underline cursor-pointer text-blue-600 dark:text-blue-400 transition-colors"
+                                        title="Click to jump to this moment in the audio"
+                                      >
+                                        {Math.floor(moment.timestamp / 60)}:{(Math.floor(moment.timestamp % 60)).toString().padStart(2, '0')}
+                                      </button>
+                                      <span className={`font-bold ${config.color}`}>{config.icon}</span>
+                                      <div className="flex-1">
+                                        <p className="text-xs text-muted-foreground mb-1">{moment.description}</p>
+                                        <p className="text-sm italic">"{moment.quote}"</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic p-3 bg-muted/50 rounded border">
+                              No specific key moments were identified for {dimensionLabel.toLowerCase()} in this call.
+                              {score >= 8 && " This dimension received a high compliance score based on overall performance throughout the call."}
+                              {score < 8 && score >= 6 && " Review the full transcript for examples related to this compliance area."}
+                              {score < 6 && " This area has compliance issues - review the Compliance Issues section below for details."}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Coaching Tips (filtered by relevance) */}
+                        {analysis.coachingRecommendations.some((rec) =>
+                          rec.toLowerCase().includes(dimensionLabel.toLowerCase().split(' ')[0])
+                        ) && (
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-semibold flex items-center gap-2">
+                              <Lightbulb className="h-4 w-4" />
+                              Coaching Focus
+                            </h4>
+                            <ul className="space-y-2">
+                              {analysis.coachingRecommendations
+                                .filter((rec) =>
+                                  rec.toLowerCase().includes(dimensionLabel.toLowerCase().split(' ')[0])
+                                )
+                                .map((rec, idx) => (
+                                  <li key={idx} className="flex items-start gap-2">
+                                    <span className="text-primary mt-0.5">•</span>
+                                    <span className="flex-1 text-sm">{rec}</span>
+                                  </li>
+                                ))}
+                            </ul>
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Coaching Recommendations */}
       {analysis && analysis.coachingRecommendations.length > 0 && (
         <Card>
@@ -406,74 +681,102 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
               {analysis.complianceIssues.map((issue, idx) => {
                 // Handle both string format (legacy) and object format (new)
                 const isObject = typeof issue === 'object' && issue !== null;
-                const description = isObject ? (issue as any).description : issue;
-                const severity = isObject ? (issue as any).severity : undefined;
-                const timestamp = isObject ? (issue as any).timestamp : undefined;
+                const issueObj = isObject ? issue : { issue: issue, severity: 'medium', category: 'general', regulatoryReference: '', timestamp: null, remediation: '' };
 
-                return (
-                  <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
-                    <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0 text-destructive" />
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        {severity && (
-                          <Badge
-                            variant={severity === 'critical' ? 'destructive' : 'secondary'}
-                            className="text-xs uppercase"
-                          >
-                            {severity}
-                          </Badge>
-                        )}
-                        {timestamp !== undefined && (
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {Math.floor(timestamp / 60)}:{(Math.floor(timestamp % 60)).toString().padStart(2, '0')}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-destructive">{description}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Key Moments */}
-      {analysis && analysis.keyMoments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Key Moments</CardTitle>
-            <CardDescription>Highlighted moments from the call</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {analysis.keyMoments.map((moment, idx) => {
-                const typeConfig = {
-                  positive: { bg: 'bg-green-100 dark:bg-green-950', text: 'text-green-700 dark:text-green-300', icon: '✅' },
-                  negative: { bg: 'bg-red-100 dark:bg-red-950', text: 'text-red-700 dark:text-red-300', icon: '❌' },
-                  neutral: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300', icon: '➖' },
+                // Severity configurations with emojis and colors
+                const severityConfig = {
+                  critical: {
+                    emoji: '🔴',
+                    bg: 'bg-red-50 dark:bg-red-950/30',
+                    border: 'border-red-300 dark:border-red-900',
+                    badgeClass: 'bg-red-600 text-white hover:bg-red-700',
+                    textColor: 'text-red-900 dark:text-red-200'
+                  },
+                  high: {
+                    emoji: '🟠',
+                    bg: 'bg-orange-50 dark:bg-orange-950/30',
+                    border: 'border-orange-300 dark:border-orange-900',
+                    badgeClass: 'bg-orange-600 text-white hover:bg-orange-700',
+                    textColor: 'text-orange-900 dark:text-orange-200'
+                  },
+                  medium: {
+                    emoji: '🟡',
+                    bg: 'bg-yellow-50 dark:bg-yellow-950/30',
+                    border: 'border-yellow-300 dark:border-yellow-900',
+                    badgeClass: 'bg-yellow-600 text-white hover:bg-yellow-700',
+                    textColor: 'text-yellow-900 dark:text-yellow-200'
+                  },
+                  low: {
+                    emoji: '🟢',
+                    bg: 'bg-green-50 dark:bg-green-950/30',
+                    border: 'border-green-300 dark:border-green-900',
+                    badgeClass: 'bg-green-600 text-white hover:bg-green-700',
+                    textColor: 'text-green-900 dark:text-green-200'
+                  },
                 };
-                const config = typeConfig[moment.type];
+
+                const config = severityConfig[issueObj.severity as keyof typeof severityConfig] || severityConfig.medium;
 
                 return (
-                  <div key={idx} className={`p-4 rounded-lg ${config.bg}`}>
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl">{config.icon}</span>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {Math.floor(moment.timestamp / 60)}:{(Math.floor(moment.timestamp % 60)).toString().padStart(2, '0')}
+                  <div key={idx} className={`flex items-start gap-3 p-4 rounded-lg ${config.bg} border ${config.border}`}>
+                    <span className="text-2xl mt-0.5">{config.emoji}</span>
+                    <div className="flex-1 space-y-3">
+                      {/* Header with severity and timestamp */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={`text-xs uppercase font-semibold ${config.badgeClass}`}>
+                          {issueObj.severity}
+                        </Badge>
+                        {issueObj.category && (
+                          <Badge variant="outline" className="text-xs">
+                            {issueObj.category.replace(/([A-Z])/g, ' $1').trim()}
                           </Badge>
-                          <span className="text-xs uppercase font-semibold tracking-wide">
-                            {moment.category}
-                          </span>
-                        </div>
-                        <p className="font-medium">{moment.description}</p>
-                        <blockquote className={`border-l-4 border-current pl-3 italic ${config.text}`}>
-                          "{moment.quote}"
-                        </blockquote>
+                        )}
+                        {issueObj.timestamp !== null && issueObj.timestamp !== undefined && (
+                          <button
+                            onClick={() => handleTimestampClick(issueObj.timestamp!)}
+                            className="font-mono text-xs font-semibold px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                            title="Click to jump to this moment in the audio"
+                          >
+                            {Math.floor(issueObj.timestamp / 60)}:{(Math.floor(issueObj.timestamp % 60)).toString().padStart(2, '0')}
+                          </button>
+                        )}
                       </div>
+
+                      {/* Issue description */}
+                      <p className={`text-sm font-medium ${config.textColor}`}>
+                        {issueObj.issue}
+                      </p>
+
+                      {/* Regulatory reference */}
+                      {issueObj.regulatoryReference && (
+                        <div className="text-xs">
+                          <span className="font-semibold text-muted-foreground">Regulatory Reference: </span>
+                          {(() => {
+                            const link = getRegulatoryLink(issueObj.regulatoryReference);
+                            return link ? (
+                              <a
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                              >
+                                {issueObj.regulatoryReference}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">{issueObj.regulatoryReference}</span>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Remediation */}
+                      {issueObj.remediation && (
+                        <div className="pt-2 border-t border-current/20">
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">Remediation:</p>
+                          <p className="text-sm">{issueObj.remediation}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

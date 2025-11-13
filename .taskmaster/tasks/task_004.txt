@@ -1,0 +1,11 @@
+# Task ID: 4
+# Title: Develop File Upload UI Component with Validation
+# Status: done
+# Dependencies: 3
+# Priority: high
+# Description: Create a drag-and-drop and click-to-upload interface for WAV files, supporting single and batch uploads with real-time progress.
+# Details:
+Use React Dropzone (`^14.2.3`) for drag-and-drop. Validate file type (WAV) and size (<50MB). Display upload progress using Shadcn/ui Progress component. Support up to 50 files per batch. Show per-file status.
+
+# Test Strategy:
+Upload sample files and verify validation, progress display, and error handling. Test with edge cases (invalid format, oversized files).

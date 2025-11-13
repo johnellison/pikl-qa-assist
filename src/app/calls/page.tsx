@@ -18,6 +18,7 @@ function CallsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingCall, setProcessingCall] = useState<string | null>(null);
+  const [callTypeFilter, setCallTypeFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchCalls();
@@ -128,6 +129,17 @@ function CallsContent() {
     );
   }
 
+  // Apply call type filter
+  const filteredCalls = callTypeFilter === 'all'
+    ? calls
+    : calls.filter(call => call.callType === callTypeFilter);
+
+  // Helper function to format call type
+  const formatCallType = (callType?: string) => {
+    if (!callType) return null;
+    return callType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -155,18 +167,88 @@ function CallsContent() {
         </Link>
       </div>
 
+      {/* Call Type Filter */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium">Filter by Call Type:</label>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={callTypeFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCallTypeFilter('all')}
+              >
+                All Calls ({calls.length})
+              </Button>
+              <Button
+                variant={callTypeFilter === 'new_business_sales' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCallTypeFilter('new_business_sales')}
+              >
+                New Business ({calls.filter(c => c.callType === 'new_business_sales').length})
+              </Button>
+              <Button
+                variant={callTypeFilter === 'renewals' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCallTypeFilter('renewals')}
+              >
+                Renewals ({calls.filter(c => c.callType === 'renewals').length})
+              </Button>
+              <Button
+                variant={callTypeFilter === 'mid_term_adjustment' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCallTypeFilter('mid_term_adjustment')}
+              >
+                MTA ({calls.filter(c => c.callType === 'mid_term_adjustment').length})
+              </Button>
+              <Button
+                variant={callTypeFilter === 'claims_inquiry' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCallTypeFilter('claims_inquiry')}
+              >
+                Claims ({calls.filter(c => c.callType === 'claims_inquiry').length})
+              </Button>
+              <Button
+                variant={callTypeFilter === 'complaints' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCallTypeFilter('complaints')}
+              >
+                Complaints ({calls.filter(c => c.callType === 'complaints').length})
+              </Button>
+              <Button
+                variant={callTypeFilter === 'general_inquiry' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCallTypeFilter('general_inquiry')}
+              >
+                General ({calls.filter(c => c.callType === 'general_inquiry').length})
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4">
-        {calls.map((call) => (
+        {filteredCalls.map((call) => (
           <Card key={call.id} className="hover:bg-accent/50 transition-colors">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <h3 className="font-semibold text-lg">{call.filename}</h3>
                     {getStatusBadge(call.status)}
+                    {call.callType && (
+                      <Badge variant="secondary" className="text-xs">
+                        {formatCallType(call.callType)}
+                      </Badge>
+                    )}
                     {call.overallScore && (
                       <Badge variant="outline" className="font-mono">
-                        Score: {call.overallScore.toFixed(1)}/10
+                        QA: {call.overallScore.toFixed(1)}/10
+                      </Badge>
+                    )}
+                    {call.complianceScore && (
+                      <Badge variant="outline" className="font-mono border-blue-300 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30">
+                        🇬🇧 Compliance: {call.complianceScore.toFixed(1)}/10
                       </Badge>
                     )}
                   </div>

@@ -42,8 +42,54 @@ export async function readCalls(): Promise<Call[]> {
       await writeCalls(uniqueCalls);
     }
 
+    // Enrich calls with analysis data (callType and complianceScore)
+    const enrichedCalls = await Promise.all(
+      uniqueCalls.map(async (call: Call) => {
+        if (call.analysisUrl && call.status === 'complete') {
+          try {
+            const analysisPath = path.join(process.cwd(), call.analysisUrl.replace(/^\//, ''));
+            const analysisData = await fs.readFile(analysisPath, 'utf-8');
+            const analysis = JSON.parse(analysisData);
+
+            // Calculate compliance score average
+            let complianceScore: number | undefined = undefined;
+            if (analysis.scores) {
+              const complianceScores = [
+                analysis.scores.callOpeningCompliance,
+                analysis.scores.dataProtectionCompliance,
+                analysis.scores.mandatoryDisclosures,
+                analysis.scores.tcfCompliance,
+              ].filter((score): score is number => typeof score === 'number');
+
+              // Add optional compliance dimensions if present
+              if (typeof analysis.scores.salesProcessCompliance === 'number') {
+                complianceScores.push(analysis.scores.salesProcessCompliance);
+              }
+              if (typeof analysis.scores.complaintsHandling === 'number') {
+                complianceScores.push(analysis.scores.complaintsHandling);
+              }
+
+              if (complianceScores.length > 0) {
+                complianceScore = complianceScores.reduce((a, b) => a + b, 0) / complianceScores.length;
+              }
+            }
+
+            return {
+              ...call,
+              callType: analysis.callType,
+              complianceScore,
+            };
+          } catch (error) {
+            // If analysis file doesn't exist or can't be read, just return call as-is
+            return call;
+          }
+        }
+        return call;
+      })
+    );
+
     // Sort by updatedAt descending (most recent first)
-    const sortedCalls = uniqueCalls.sort((a, b) => {
+    const sortedCalls = enrichedCalls.sort((a, b) => {
       const dateA = new Date(a.updatedAt).getTime();
       const dateB = new Date(b.updatedAt).getTime();
       return dateB - dateA; // Descending order

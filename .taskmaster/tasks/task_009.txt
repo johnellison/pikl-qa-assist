@@ -1,0 +1,11 @@
+# Task ID: 9
+# Title: Integrate Claude 3.5 Sonnet API for QA Analysis
+# Status: done
+# Dependencies: 8
+# Priority: high
+# Description: Send transcripts to Claude API for analysis against the 8-dimension QA framework, receiving structured JSON output.
+# Details:
+Use Anthropic Node SDK (`^0.7.0`). POST to `/v1/messages` with transcript and QA rubric. Use JSON mode for output. Store analysis results in Analysis interface. Cost: ~$0.07 per 30-min call.
+
+# Test Strategy:
+Process 10 sample transcripts. Validate output schema, scoring consistency, and rubric adherence.

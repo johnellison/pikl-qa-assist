@@ -20,20 +20,46 @@ export function parseCallFilename(filename: string): ParseResult {
   // Remove .wav extension if present
   const nameWithoutExt = filename.replace(/\.wav$/i, '');
 
-  // Regex pattern to extract metadata
-  // Pattern: [LastName, FirstName]_AgentID-Phone_Timestamp(CallID)
-  const pattern = /^\[([^,]+),\s*([^\]]+)\]_(\d+)-(\d+)_(\d{14})\((\d+)\)$/;
+  // Try two patterns:
+  // Pattern 1: [LastName, FirstName]_AgentID-Phone_Timestamp(CallID)
+  // Pattern 2: [FirstName LastName]_AgentID-Phone_Timestamp(CallID)
 
-  const match = nameWithoutExt.match(pattern);
+  const patternWithComma = /^\[([^,]+),\s*([^\]]+)\]_(\d+)-(\d+)_(\d{14})\((\d+)\)$/;
+  const patternWithoutComma = /^\[([^\]]+)\]_(\d+)-(\d+)_(\d{14})\((\d+)\)$/;
 
-  if (!match) {
-    return {
-      success: false,
-      error: `Invalid filename format. Expected: [LastName, FirstName]_AgentID-Phone_Timestamp(CallID).wav`,
-    };
+  let match = nameWithoutExt.match(patternWithComma);
+  let agentName: string;
+  let agentId: string;
+  let phoneNumber: string;
+  let timestamp: string;
+  let callId: string;
+
+  if (match) {
+    // Format: [LastName, FirstName]
+    const [, lastName, firstName, aId, phone, ts, cId] = match;
+    agentName = `${firstName.trim()} ${lastName.trim()}`;
+    agentId = aId;
+    phoneNumber = phone;
+    timestamp = ts;
+    callId = cId;
+  } else {
+    // Try without comma
+    match = nameWithoutExt.match(patternWithoutComma);
+    if (!match) {
+      return {
+        success: false,
+        error: `Invalid filename format. Expected: [LastName, FirstName]_AgentID-Phone_Timestamp(CallID).wav or [FirstName LastName]_AgentID-Phone_Timestamp(CallID).wav`,
+      };
+    }
+
+    // Format: [FirstName LastName]
+    const [, fullName, aId, phone, ts, cId] = match;
+    agentName = fullName.trim();
+    agentId = aId;
+    phoneNumber = phone;
+    timestamp = ts;
+    callId = cId;
   }
-
-  const [, lastName, firstName, agentId, phoneNumber, timestamp, callId] = match;
 
   // Parse timestamp (format: YYYYMMDDHHmmss)
   const year = parseInt(timestamp.substring(0, 4));
@@ -52,9 +78,6 @@ export function parseCallFilename(filename: string): ParseResult {
       error: `Invalid timestamp in filename: ${timestamp}`,
     };
   }
-
-  // Construct full agent name
-  const agentName = `${firstName.trim()} ${lastName.trim()}`;
 
   const metadata: CallMetadata = {
     agentName,

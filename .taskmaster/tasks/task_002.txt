@@ -1,0 +1,11 @@
+# Task ID: 2
+# Title: Define Core TypeScript Data Models and Interfaces
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Implement TypeScript interfaces for Call, Transcript, Analysis, and related entities as specified in the PRD.
+# Details:
+Create `src/types` and define interfaces for Call, Transcript, TranscriptTurn, Analysis, KeyMoment. Use strict typing and include all required fields. Export types for use in API routes and frontend components.
+
+# Test Strategy:
+Write unit tests using Vitest or Jest to validate type correctness and enforce required fields.

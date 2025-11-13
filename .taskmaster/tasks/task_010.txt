@@ -1,0 +1,11 @@
+# Task ID: 10
+# Title: Design and Implement QA Analysis Prompt Template
+# Status: done
+# Dependencies: 9
+# Priority: high
+# Description: Create a detailed prompt template for Claude API to ensure consistent scoring and actionable feedback per PRD rubric.
+# Details:
+Include 8 scoring dimensions, definitions, and examples in prompt. Specify output format (JSON) and require key moments, coaching recommendations, and compliance flags. Iterate based on initial results.
+
+# Test Strategy:
+Compare Claude output with manual scoring for 5 calls. Adjust prompt for consistency.

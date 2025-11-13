@@ -1,0 +1,11 @@
+# Task ID: 1
+# Title: Initialize Next.js 15 Project with TypeScript and TailwindCSS
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Set up the foundational project structure using Next.js 15, TypeScript, and TailwindCSS, ensuring compatibility with Shadcn/ui.
+# Details:
+Use `npx create-next-app@latest` with TypeScript template. Install TailwindCSS (`^3.4.1`) and configure PostCSS. Integrate Shadcn/ui by following their setup guide. Set up `src/app`, `src/components`, and `src/lib` directories. Ensure App Router is enabled. Confirm Vercel deployment compatibility.
+
+# Test Strategy:
+Run `next dev` and verify landing page loads. Check Tailwind utility classes render correctly. Confirm Shadcn/ui components can be imported and rendered.

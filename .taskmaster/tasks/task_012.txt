@@ -1,0 +1,11 @@
+# Task ID: 12
+# Title: Build Results Display Page for Single Call Analysis
+# Status: done
+# Dependencies: 11
+# Priority: medium
+# Description: Create a results page showing transcript, analysis scores, key moments, and coaching feedback for individual calls.
+# Details:
+Use Shadcn/ui Card and DataGrid components. Display summary, scores, transcript with speaker labels, and actionable feedback. Ensure fast loading (<2s) and progressive disclosure.
+
+# Test Strategy:
+Manual UI review with 5 sample calls. Check for correct data rendering and responsiveness.

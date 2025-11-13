@@ -1,0 +1,11 @@
+# Task ID: 11
+# Title: Implement Data Persistence Layer (JSON → SQLite)
+# Status: pending
+# Dependencies: 10
+# Priority: high
+# Description: Store call, transcript, and analysis data in JSON files for MVP, then migrate to SQLite for persistence and querying.
+# Details:
+Use Node.js fs for JSON storage initially. Set up Prisma ORM (`^5.0.0`) for SQLite migration. Define schema matching TypeScript interfaces. Prepare for future PostgreSQL migration.
+
+# Test Strategy:
+CRUD tests for call records. Validate migration from JSON to SQLite with sample data.
