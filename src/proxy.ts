@@ -7,8 +7,8 @@ const AUTH_TOKEN = 'authenticated-pikl-2025';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow access to login page and auth API
-  if (pathname.startsWith('/login') || pathname.startsWith('/api/auth')) {
+  // Allow access to login page, auth API, and admin API (admin has its own auth)
+  if (pathname.startsWith('/login') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/admin')) {
     return NextResponse.next();
   }
 
