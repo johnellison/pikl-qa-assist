@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseCallFilename } from '@/lib/metadata-parser';
-import { addCall, saveUploadedFile, generateCallId } from '@/lib/storage';
+import { addCall, generateCallId, ensureDirectories } from '@/lib/storage';
 import type { Call, ApiResponse } from '@/types';
+import busboy from 'busboy';
+import { Writable } from 'stream';
+import fs from 'fs';
+import path from 'path';
 
 // Route segment config to increase body size limit
 export const runtime = 'nodejs';
@@ -9,78 +13,148 @@ export const maxDuration = 300; // 5 minutes
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB upload limit (AssemblyAI supports up to 5GB)
 const ALLOWED_MIME_TYPES = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a'];
+const UPLOADS_DIR = path.join(process.cwd(), 'data', 'uploads');
+
+interface FileInfo {
+  filename: string;
+  filepath: string;
+  size: number;
+  mimetype: string;
+}
 
 /**
  * POST /api/upload
- * Upload WAV file(s) for processing
+ * Upload WAV file(s) for processing using streaming
  */
 export async function POST(req: NextRequest) {
   try {
     console.log('[UPLOAD] Request received at', new Date().toISOString());
 
-    // Get the form data directly
-    const formData = await req.formData();
-    console.log('[UPLOAD] FormData parsed');
+    // Ensure uploads directory exists
+    await ensureDirectories();
 
-    const files = formData.getAll('files') as File[];
-    console.log('[UPLOAD] Files count:', files.length);
+    const uploadedFiles: FileInfo[] = [];
+    const uploadedCalls: Call[] = [];
+    const errors: string[] = [];
 
-    if (!files || files.length === 0) {
+    // Get content type for busboy
+    const contentType = req.headers.get('content-type');
+    if (!contentType || !contentType.includes('multipart/form-data')) {
       return NextResponse.json<ApiResponse<null>>(
         {
           success: false,
-          error: 'No files provided',
+          error: 'Invalid content type. Expected multipart/form-data',
         },
         { status: 400 }
       );
     }
 
-    const uploadedCalls: Call[] = [];
-    const errors: string[] = [];
+    // Convert Request to Node.js stream
+    const nodeStream = req.body as unknown as NodeJS.ReadableStream;
 
-    for (const file of files) {
-      try {
-        console.log(`[UPLOAD] Processing file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB, type: ${file.type}`);
+    // Parse multipart form data with streaming
+    await new Promise<void>((resolve, reject) => {
+      const bb = busboy({
+        headers: {
+          'content-type': contentType,
+        },
+        limits: {
+          fileSize: MAX_FILE_SIZE,
+          files: 10, // Max 10 files per upload
+        },
+      });
+
+      bb.on('file', (fieldname, file, info) => {
+        const { filename, mimeType } = info;
+        console.log(`[UPLOAD] Processing file: ${filename}, type: ${mimeType}`);
 
         // Validate file type
-        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-          errors.push(`${file.name}: Invalid file type. Only WAV files are accepted.`);
-          continue;
-        }
-
-        // Validate file size (allow up to 50MB, will compress if needed)
-        if (file.size > MAX_FILE_SIZE) {
-          errors.push(`${file.name}: File size exceeds 100MB upload limit.`);
-          continue;
+        if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+          errors.push(`${filename}: Invalid file type. Only audio files are accepted.`);
+          file.resume(); // Drain the stream
+          return;
         }
 
         // Parse filename to extract metadata
-        const parseResult = parseCallFilename(file.name);
+        const parseResult = parseCallFilename(filename);
         if (!parseResult.success) {
-          errors.push(`${file.name}: ${parseResult.error}`);
-          continue;
+          errors.push(`${filename}: ${parseResult.error}`);
+          file.resume(); // Drain the stream
+          return;
+        }
+
+        // Create write stream to disk
+        const filepath = path.join(UPLOADS_DIR, filename);
+        const writeStream = fs.createWriteStream(filepath);
+        let fileSize = 0;
+
+        file.on('data', (chunk) => {
+          fileSize += chunk.length;
+        });
+
+        file.on('limit', () => {
+          errors.push(`${filename}: File size exceeds 100MB upload limit.`);
+          writeStream.destroy();
+          fs.unlink(filepath, () => {}); // Delete partial file
+        });
+
+        file.on('error', (err) => {
+          console.error(`[UPLOAD] File stream error for ${filename}:`, err);
+          errors.push(`${filename}: ${err.message}`);
+          writeStream.destroy();
+        });
+
+        writeStream.on('error', (err) => {
+          console.error(`[UPLOAD] Write stream error for ${filename}:`, err);
+          errors.push(`${filename}: ${err.message}`);
+        });
+
+        writeStream.on('finish', () => {
+          console.log(`[UPLOAD] File saved: ${filename}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
+          uploadedFiles.push({
+            filename,
+            filepath,
+            size: fileSize,
+            mimetype: mimeType,
+          });
+        });
+
+        // Pipe file stream to disk
+        file.pipe(writeStream);
+      });
+
+      bb.on('error', (err) => {
+        console.error('[UPLOAD] Busboy error:', err);
+        reject(err);
+      });
+
+      bb.on('finish', () => {
+        console.log('[UPLOAD] Busboy finished parsing');
+        resolve();
+      });
+
+      // Pipe request body to busboy
+      if (nodeStream) {
+        nodeStream.pipe(bb as unknown as Writable);
+      } else {
+        reject(new Error('Request body stream is null'));
+      }
+    });
+
+    // Process uploaded files and create call records
+    for (const fileInfo of uploadedFiles) {
+      try {
+        const parseResult = parseCallFilename(fileInfo.filename);
+        if (!parseResult.success) {
+          continue; // Already added to errors
         }
 
         const metadata = parseResult.metadata!;
 
-        // Read file buffer
-        console.log(`[UPLOAD] Reading file buffer for ${file.name}...`);
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        console.log(`[UPLOAD] Buffer created, size: ${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
-
-        // Save file to uploads directory
-        console.log(`[UPLOAD] Saving file to disk...`);
-        const savedPath = await saveUploadedFile(buffer, file.name);
-        console.log(`[UPLOAD] File saved to: ${savedPath}`);
-
-        // No compression needed - AssemblyAI supports files up to 5GB
-        // Whisper's 25MB limit is no longer relevant since we use AssemblyAI by default
-
         // Create call record
         const call: Call = {
           id: generateCallId(),
-          filename: file.name, // Original filename
+          filename: fileInfo.filename,
           agentName: metadata.agentName,
           agentId: metadata.agentId,
           phoneNumber: metadata.phoneNumber,
@@ -109,11 +183,13 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             callId: savedCall.id,
-            provider: 'assemblyai' // Use AssemblyAI for superior diarization
+            provider: 'assemblyai', // Use AssemblyAI for superior diarization
           }),
         }).catch((err) => console.error('Failed to trigger transcription:', err));
+
+        console.log(`[UPLOAD] Call record created: ${savedCall.id}`);
       } catch (fileError) {
-        errors.push(`${file.name}: ${(fileError as Error).message}`);
+        errors.push(`${fileInfo.filename}: ${(fileError as Error).message}`);
       }
     }
 
@@ -143,7 +219,7 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('[UPLOAD] Upload error:', error);
     return NextResponse.json<ApiResponse<null>>(
       {
         success: false,
