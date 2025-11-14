@@ -65,10 +65,25 @@ export async function transcribeAudio(filePath: string, callId: string): Promise
       });
     }
 
+    // Calculate duration from utterances (more reliable than audio_duration field)
+    let durationSeconds = 0;
+    if (transcript.audio_duration) {
+      // Use audio_duration if available (in milliseconds)
+      durationSeconds = transcript.audio_duration / 1000;
+    } else if (transcript.utterances && transcript.utterances.length > 0) {
+      // Fallback: calculate from last utterance's end time
+      const lastUtterance = transcript.utterances[transcript.utterances.length - 1];
+      durationSeconds = lastUtterance.end / 1000; // Convert ms to seconds
+    } else if (turns.length > 0) {
+      // Last fallback: use last turn's timestamp + 5 seconds buffer
+      const lastTurn = turns[turns.length - 1];
+      durationSeconds = lastTurn.timestamp + 5;
+    }
+
     const result: Transcript = {
       callId,
       turns,
-      durationSeconds: (transcript.audio_duration || 0) / 1000, // Convert ms to seconds
+      durationSeconds,
       language: 'english',
       processingTime,
     };
