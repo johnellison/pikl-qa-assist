@@ -16,7 +16,7 @@ echo ""
 echo "Creating database dump..."
 sqlite3 data/db/qa-assist.db .dump > data-backup.sql
 CALL_COUNT=$(sqlite3 data/db/qa-assist.db "SELECT COUNT(*) FROM Call;")
-echo "✅ Created dump with $CALL_COUNT calls"
+echo "✅ Created dump with $CALL_COUNT complete calls (transcribed + analyzed)"
 echo ""
 
 echo "Uploading to $RAILWAY_URL..."
