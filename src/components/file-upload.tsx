@@ -18,7 +18,7 @@ interface FileUploadProps {
   onUpload?: (files: File[]) => void;
 }
 
-const MAX_FILE_SIZE = 9 * 1024 * 1024; // 9MB (under Next.js limit)
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB (chunked upload)
 const MAX_FILES = 50;
 const ACCEPTED_TYPES = {
   'audio/wav': ['.wav'],
@@ -48,7 +48,7 @@ export function FileUpload({
         const file = rejection.file;
         rejection.errors.forEach((error: any) => {
           if (error.code === 'file-too-large') {
-            newErrors.push(`${file.name}: File size exceeds 9MB upload limit`);
+            newErrors.push(`${file.name}: File size exceeds 100MB upload limit`);
           } else if (error.code === 'file-invalid-type') {
             newErrors.push(`${file.name}: Only WAV files are accepted`);
           } else {
@@ -139,10 +139,14 @@ export function FileUpload({
 
     console.log(`[UPLOAD] Uploading ${file.name} in ${totalChunks} chunks`);
 
+    let lastResponse: any = null;
+
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
       const start = chunkIndex * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, file.size);
       const chunk = file.slice(start, end);
+
+      console.log(`[UPLOAD] Chunk ${chunkIndex + 1}/${totalChunks}: ${chunk.size} bytes (${start}-${end})`);
 
       const formData = new FormData();
       formData.append('chunk', chunk);
@@ -156,8 +160,13 @@ export function FileUpload({
       });
 
       if (!response.ok) {
-        throw new Error(`Chunk ${chunkIndex + 1} upload failed`);
+        const errorText = await response.text();
+        console.error(`[UPLOAD] Chunk ${chunkIndex + 1} failed:`, errorText);
+        throw new Error(`Chunk ${chunkIndex + 1} upload failed: ${errorText}`);
       }
+
+      const result = await response.json();
+      lastResponse = result;
 
       // Update progress
       const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
@@ -170,23 +179,11 @@ export function FileUpload({
         },
       }));
 
-      console.log(`[UPLOAD] Chunk ${chunkIndex + 1}/${totalChunks} uploaded (${progress}%)`);
+      console.log(`[UPLOAD] Chunk ${chunkIndex + 1}/${totalChunks} uploaded (${progress}%)`, result);
     }
 
-    // Get final response
-    const result = await fetch('/api/upload/chunk', {
-      method: 'POST',
-      body: (() => {
-        const fd = new FormData();
-        fd.append('chunk', new Blob());
-        fd.append('filename', file.name);
-        fd.append('chunkIndex', (totalChunks - 1).toString());
-        fd.append('totalChunks', totalChunks.toString());
-        return fd;
-      })(),
-    }).then((r) => r.json());
-
-    return result;
+    console.log('[UPLOAD] All chunks uploaded, final response:', lastResponse);
+    return lastResponse;
   };
 
   const handleUpload = async () => {
@@ -288,7 +285,7 @@ export function FileUpload({
           )}
 
           <div className="mt-4 text-xs text-muted-foreground text-center space-y-1">
-            <p>Maximum file size: 9MB</p>
+            <p>Maximum file size: 100MB</p>
             <p>Maximum files per batch: {maxFiles}</p>
             <p>Accepted format: WAV audio files</p>
           </div>
