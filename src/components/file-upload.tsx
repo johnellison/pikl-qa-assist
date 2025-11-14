@@ -18,7 +18,7 @@ interface FileUploadProps {
   onUpload?: (files: File[]) => void;
 }
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 9 * 1024 * 1024; // 9MB (under Next.js limit)
 const MAX_FILES = 50;
 const ACCEPTED_TYPES = {
   'audio/wav': ['.wav'],
@@ -48,7 +48,7 @@ export function FileUpload({
         const file = rejection.file;
         rejection.errors.forEach((error: any) => {
           if (error.code === 'file-too-large') {
-            newErrors.push(`${file.name}: File size exceeds 100MB upload limit`);
+            newErrors.push(`${file.name}: File size exceeds 9MB upload limit`);
           } else if (error.code === 'file-invalid-type') {
             newErrors.push(`${file.name}: Only WAV files are accepted`);
           } else {
@@ -288,7 +288,7 @@ export function FileUpload({
           )}
 
           <div className="mt-4 text-xs text-muted-foreground text-center space-y-1">
-            <p>Maximum file size: 100MB</p>
+            <p>Maximum file size: 9MB</p>
             <p>Maximum files per batch: {maxFiles}</p>
             <p>Accepted format: WAV audio files</p>
           </div>

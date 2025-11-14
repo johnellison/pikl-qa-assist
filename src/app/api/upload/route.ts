@@ -10,7 +10,7 @@ import path from 'path';
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB upload limit (AssemblyAI supports up to 5GB)
+const MAX_FILE_SIZE = 9 * 1024 * 1024; // 9MB upload limit (Next.js constraint)
 const ALLOWED_MIME_TYPES = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a'];
 const UPLOADS_DIR = path.join(process.cwd(), 'data', 'uploads');
 
