@@ -13,7 +13,7 @@ const TEMP_DIR = path.join(process.cwd(), 'data', 'temp');
 
 /**
  * POST /api/upload/chunk
- * Handle chunked file uploads
+ * Handle chunked file uploads using raw binary data (bypasses FormData 10MB limit)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -23,25 +23,28 @@ export async function POST(req: NextRequest) {
     await ensureDirectories();
     await fs.mkdir(TEMP_DIR, { recursive: true });
 
-    const formData = await req.formData();
+    // Read metadata from headers (bypasses FormData parsing)
+    const filename = req.headers.get('x-filename');
+    const chunkIndex = parseInt(req.headers.get('x-chunk-index') || '');
+    const totalChunks = parseInt(req.headers.get('x-total-chunks') || '');
 
-    const chunk = formData.get('chunk') as File;
-    const filename = formData.get('filename') as string;
-    const chunkIndex = parseInt(formData.get('chunkIndex') as string);
-    const totalChunks = parseInt(formData.get('totalChunks') as string);
-
-    if (!chunk || !filename || isNaN(chunkIndex) || isNaN(totalChunks)) {
+    if (!filename || isNaN(chunkIndex) || isNaN(totalChunks)) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Missing required headers: x-filename, x-chunk-index, x-total-chunks' },
         { status: 400 }
       );
     }
 
     console.log(`[CHUNK] Received chunk ${chunkIndex + 1}/${totalChunks} for ${filename}`);
 
+    // Read raw binary body (no FormData parsing - works with any size up to Railway/Vercel limits)
+    const arrayBuffer = await req.arrayBuffer();
+    const chunkBuffer = Buffer.from(arrayBuffer);
+
+    console.log(`[CHUNK] Chunk size: ${(chunkBuffer.length / 1024 / 1024).toFixed(2)}MB`);
+
     // Save chunk to temp directory
     const chunkPath = path.join(TEMP_DIR, `${filename}.part${chunkIndex}`);
-    const chunkBuffer = Buffer.from(await chunk.arrayBuffer());
     await fs.writeFile(chunkPath, chunkBuffer);
 
     // If this is the last chunk, assemble the file

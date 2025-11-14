@@ -134,7 +134,7 @@ export function FileUpload({
   };
 
   const uploadFileInChunks = async (file: File) => {
-    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+    const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks (safe for raw binary, no FormData overhead)
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
     console.log(`[UPLOAD] Uploading ${file.name} in ${totalChunks} chunks`);
@@ -148,15 +148,16 @@ export function FileUpload({
 
       console.log(`[UPLOAD] Chunk ${chunkIndex + 1}/${totalChunks}: ${chunk.size} bytes (${start}-${end})`);
 
-      const formData = new FormData();
-      formData.append('chunk', chunk);
-      formData.append('filename', file.name);
-      formData.append('chunkIndex', chunkIndex.toString());
-      formData.append('totalChunks', totalChunks.toString());
-
+      // Send raw binary data with metadata in headers (bypasses FormData 10MB limit)
       const response = await fetch('/api/upload/chunk', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'x-filename': file.name,
+          'x-chunk-index': chunkIndex.toString(),
+          'x-total-chunks': totalChunks.toString(),
+        },
+        body: chunk, // Send raw Blob directly - no FormData!
       });
 
       if (!response.ok) {
