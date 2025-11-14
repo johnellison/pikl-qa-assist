@@ -83,7 +83,9 @@ export async function POST(req: NextRequest) {
 
         // Trigger transcription asynchronously (don't wait)
         // Use AssemblyAI by default for better speaker diarization
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/transcribe`, {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        const transcribeUrl = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`;
+        fetch(`${transcribeUrl}/api/transcribe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
