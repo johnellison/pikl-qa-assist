@@ -3,6 +3,10 @@ import { parseCallFilename } from '@/lib/metadata-parser';
 import { addCall, saveUploadedFile, generateCallId } from '@/lib/storage';
 import type { Call, ApiResponse } from '@/types';
 
+// Route segment config to increase body size limit
+export const runtime = 'nodejs';
+export const maxDuration = 300; // 5 minutes
+
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB upload limit (AssemblyAI supports up to 5GB)
 const ALLOWED_MIME_TYPES = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a'];
 
