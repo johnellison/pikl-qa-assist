@@ -2,9 +2,17 @@ import OpenAI from 'openai';
 import fs from 'fs/promises';
 import type { Transcript, TranscriptTurn } from '@/types';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization to avoid build-time errors
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openaiClient;
+}
 
 /**
  * Enhanced speaker detection using multiple heuristic signals
@@ -160,6 +168,7 @@ export async function transcribeAudio(filePath: string, callId: string): Promise
 
     // Call OpenAI Whisper API with verbose_json to get timestamps
     // Force English language to prevent misdetection (e.g., Welsh instead of English)
+    const openai = getOpenAIClient();
     const response = await openai.audio.transcriptions.create({
       file: file,
       model: 'whisper-1',
