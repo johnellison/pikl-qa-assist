@@ -39,15 +39,17 @@ export interface KeyMoment {
 }
 
 export interface QAScores {
-  // Core QA Dimensions
+  // Core QA Dimensions (7 dimensions)
   rapport: number; // 0-10
   needsDiscovery: number; // 0-10
   productKnowledge: number; // 0-10
   objectionHandling: number; // 0-10
   closing: number; // 0-10
-  compliance: number; // 0-10 (legacy, kept for backward compatibility)
   professionalism: number; // 0-10
   followUp: number; // 0-10
+
+  // Legacy field - deprecated, no longer used in new analyses
+  compliance?: number; // 0-10 (DEPRECATED: Use UK compliance dimensions instead)
 
   // UK Compliance Sub-Dimensions (0-10 each, null if not applicable)
   callOpeningCompliance: number; // Firm ID, call recording disclosure, GDPR notice
@@ -70,7 +72,9 @@ export interface ComplianceIssue {
 export interface Analysis {
   callId: string;
   callType?: CallType; // Auto-detected call type for tailored compliance checks
-  overallScore: number; // 0-10, average of all scores
+  overallScore: number; // 0-10, weighted average (70% QA + 30% Compliance)
+  qaScore?: number; // 0-10, average of 7 core QA dimensions
+  complianceScore?: number; // 0-10, average of UK compliance dimensions
   scores: QAScores;
   keyMoments: KeyMoment[];
   coachingRecommendations: string[];

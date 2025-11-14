@@ -1,0 +1,179 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Call record with metadata and processing status
+model Call {
+  id               String    @id
+  filename         String
+  agentName        String
+  agentId          String
+  phoneNumber      String
+  callId           String    @unique
+  timestamp        DateTime
+  duration         Int       // in seconds
+  status           String    // pending, transcribing, analyzing, complete, error
+  transcriptUrl    String?
+  analysisUrl      String?
+  overallScore     Float?    // Weighted average (70% QA + 30% Compliance)
+  qaScore          Float?    // Average of 7 core QA dimensions
+  complianceScore  Float?    // Average of UK compliance dimensions
+  callType         String?   // new_business_sales, renewals, mid_term_adjustment, etc.
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  errorMessage     String?
+
+  // Relations
+  transcript       Transcript?
+  analysis         Analysis?
+
+  @@index([agentId])
+  @@index([status])
+  @@index([timestamp])
+  @@index([callType])
+}
+
+// Transcript data
+model Transcript {
+  id        String   @id @default(cuid())
+  callId    String   @unique
+  text      String   // Plain text transcript
+  segments  String   // JSON stringified array of transcript segments
+  duration  Int      // in seconds
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+}
+
+// Analysis results from Claude
+model Analysis {
+  id                    String   @id @default(cuid())
+  callId                String   @unique
+  callType              String?  // Auto-detected call type
+  overallScore          Float    // 0-10, weighted average
+  qaScore               Float?   // 0-10, average of QA dimensions
+  complianceScore       Float?   // 0-10, average of compliance dimensions
+  summary               String
+  callOutcome           String
+  processingTime        Int?     // ms taken to analyze
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  call                  Call                 @relation(fields: [callId], references: [id], onDelete: Cascade)
+  scores                QAScores?
+  keyMoments            KeyMoment[]
+  coachingRecommendations CoachingRecommendation[]
+  complianceIssues      ComplianceIssue[]
+  outcomeMetrics        OutcomeMetrics?
+
+  @@index([callId])
+  @@index([callType])
+  @@index([overallScore])
+}
+
+// QA Scores (7 core dimensions + UK compliance dimensions)
+model QAScores {
+  id                        String   @id @default(cuid())
+  analysisId                String   @unique
+
+  // Core QA Dimensions (7 dimensions)
+  rapport                   Float    // 0-10
+  needsDiscovery            Float    // 0-10
+  productKnowledge          Float    // 0-10
+  objectionHandling         Float    // 0-10
+  closing                   Float    // 0-10
+  professionalism           Float    // 0-10
+  followUp                  Float    // 0-10
+
+  // UK Compliance Sub-Dimensions
+  callOpeningCompliance     Float    // 0-10
+  dataProtectionCompliance  Float    // 0-10
+  mandatoryDisclosures      Float    // 0-10
+  tcfCompliance             Float    // 0-10
+  salesProcessCompliance    Float?   // 0-10, null if not applicable
+  complaintsHandling        Float?   // 0-10, null if not applicable
+
+  // Relations
+  analysis                  Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+}
+
+// Key moments in the call
+model KeyMoment {
+  id          String   @id @default(cuid())
+  analysisId  String
+  timestamp   Int      // seconds from start
+  type        String   // positive, negative, neutral
+  category    String
+  description String
+  quote       String   // Actual text from transcript
+  createdAt   DateTime @default(now())
+
+  // Relations
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([type])
+}
+
+// Coaching recommendations
+model CoachingRecommendation {
+  id          String   @id @default(cuid())
+  analysisId  String
+  recommendation String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+}
+
+// Compliance issues detected
+model ComplianceIssue {
+  id                   String   @id @default(cuid())
+  analysisId           String
+  severity             String   // critical, high, medium, low
+  category             String   // e.g., dataProtectionCompliance
+  issue                String   // Clear description of the violation
+  regulatoryReference  String   // e.g., ICOBS 4.2, GDPR Article 13
+  timestamp            Int?     // seconds from start, null if not specific
+  remediation          String   // Specific action needed to fix
+  createdAt            DateTime @default(now())
+
+  // Relations
+  analysis             Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+  @@index([severity])
+  @@index([category])
+}
+
+// Outcome metrics
+model OutcomeMetrics {
+  id                String   @id @default(cuid())
+  analysisId        String   @unique
+  quotesCompleted   Int      @default(0)
+  salesCompleted    Int      @default(0)
+  renewalsCompleted Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  // Relations
+  analysis          Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+}

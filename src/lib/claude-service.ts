@@ -169,6 +169,8 @@ FOR UK COMPLIANCE DIMENSIONS (#9-14):
 
 Please analyze this call across the following dimensions, scoring each from 0-10:
 
+**CORE QA DIMENSIONS (7 dimensions):**
+
 1. **Rapport Building** (rapport): How well did the agent establish connection and trust with the customer?
    - 8-10: Excellent rapport, warm and personable, builds strong connection
    - 5-7: Adequate rapport, professional but somewhat distant
@@ -185,33 +187,32 @@ Please analyze this call across the following dimensions, scoring each from 0-10
    - 0-4: Poor knowledge, gave incorrect or incomplete information
 
 4. **Objection Handling** (objectionHandling): How effectively did the agent address concerns and objections?
-   - 8-10: Excellent handling, addressed concerns thoroughly, turned objections into opportunities
-   - 5-7: Adequate handling, addressed concerns but lacked confidence
-   - 0-4: Poor handling, avoided or dismissed objections
+   - **DEFAULT: 8/10 if NO objections raised** - This is the expected baseline (customer satisfied, no concerns voiced)
+   - **ONLY deduct points if objections WERE raised and mishandled:**
+     - 9-10: Excellent handling, addressed concerns thoroughly, turned objections into opportunities
+     - 7-8: Adequate handling, addressed concerns but lacked confidence or missed opportunity to strengthen value
+     - 5-6: Weak handling, avoided or incompletely addressed objections
+     - 0-4: Poor handling, dismissed objections or became defensive
+   - **If no objections raised, score 8/10** unless there's evidence the agent should have proactively addressed concerns
 
 5. **Closing Techniques** (closing): How well did the agent move toward a resolution or next step?
    - 8-10: Strong close, clear next steps, gained commitment
    - 5-7: Adequate close, some next steps but lacked clarity
    - 0-4: Weak or no close, left customer uncertain
 
-6. **Compliance** (compliance): Did the agent follow required scripts, disclosures, and legal requirements?
-   - 8-10: Full compliance, all required elements covered
-   - 5-7: Mostly compliant, minor omissions
-   - 0-4: Non-compliant, missed critical requirements
-
-7. **Professionalism** (professionalism): How professional was the agent's communication and demeanor?
+6. **Professionalism** (professionalism): How professional was the agent's communication and demeanor?
    - 8-10: Highly professional, polished communication, appropriate tone
    - 5-7: Adequately professional, occasional lapses
    - 0-4: Unprofessional behavior or communication
 
-8. **Follow-Up** (followUp): How well did the agent set expectations for next steps and follow-up?
+7. **Follow-Up** (followUp): How well did the agent set expectations for next steps and follow-up?
    - 8-10: Clear follow-up plan, documented action items, set expectations
    - 5-7: Basic follow-up, some next steps mentioned
    - 0-4: No follow-up plan or unclear next steps
 
-**UK COMPLIANCE DIMENSIONS** (Critical for regulatory adherence):
+**UK COMPLIANCE DIMENSIONS** (Critical for regulatory adherence - scored separately from QA dimensions):
 
-9. **Call Opening Compliance** (callOpeningCompliance): 0-10
+8. **Call Opening Compliance** (callOpeningCompliance): 0-10
    - 10: Perfect - All required elements present for this call type
    - 9: Fully compliant with minor procedural enhancement possible
    - 8: Compliant with one minor omission that doesn't breach regulations
@@ -248,7 +249,7 @@ Please analyze this call across the following dimensions, scoring each from 0-10
    - "For quality assurance and regulatory purposes" or similar
    - GDPR notice appropriate for call type (see above)
 
-10. **Data Protection Compliance** (dataProtectionCompliance): 0-10
+9. **Data Protection Compliance** (dataProtectionCompliance): 0-10
     - 10: Perfect - Identity verified BEFORE accessing any policy data
     - 7-9: Good - Verification done but minor procedural gaps
     - 4-6: Adequate - Verification attempted but incomplete
@@ -262,7 +263,7 @@ Please analyze this call across the following dimensions, scoring each from 0-10
 
     **CRITICAL BREACH**: If agent accesses policy data before DPA verification, score = 0
 
-11. **Mandatory Disclosures** (mandatoryDisclosures): 0-10
+10. **Mandatory Disclosures** (mandatoryDisclosures): 0-10
     - 10: Perfect - All required disclosures made clearly
     - 7-9: Good - Most disclosures made, minor gaps
     - 4-6: Adequate - Some disclosures made
@@ -275,7 +276,7 @@ Please analyze this call across the following dimensions, scoring each from 0-10
     ✅ Cooling-off rights (14-day cancellation for new business)
     ✅ Price breakdown (premium + IPT + fees)
 
-12. **Treating Customers Fairly (TCF)** (tcfCompliance): 0-10
+11. **Treating Customers Fairly (TCF)** (tcfCompliance): 0-10
     - 10: Excellent - Customer treated fairly throughout, no pressure
     - 7-9: Good - Fair treatment, minor areas for improvement
     - 4-6: Adequate - Mostly fair but some concerns
@@ -283,7 +284,7 @@ Please analyze this call across the following dimensions, scoring each from 0-10
 
     **CRITICAL BREACH**: If pressure selling detected, score ≤ 3
 
-13. **Sales Process Compliance** (salesProcessCompliance): 0-10 or null (if not a sales call)
+12. **Sales Process Compliance** (salesProcessCompliance): 0-10 or null (if not a sales call)
     - 10: Perfect - All sales process requirements met
     - 7-9: Good - Most requirements met, minor gaps
     - 4-6: Adequate - Basic process followed, gaps exist
@@ -297,7 +298,7 @@ Please analyze this call across the following dimensions, scoring each from 0-10
     ✅ Price clearly explained with breakdown
     ✅ Cooling-off rights explained (14 days)
 
-14. **Complaints Handling** (complaintsHandling): 0-10 or null (if no complaint)
+13. **Complaints Handling** (complaintsHandling): 0-10 or null (if no complaint)
     - 10: Perfect - Complaint handled per DISP requirements
     - 7-9: Good - Most requirements met, minor gaps
     - 4-6: Adequate - Basic handling, improvements needed
@@ -321,10 +322,19 @@ First, identify the primary call type:
 5. COMPLAINTS - Customer making a formal complaint
 6. GENERAL INQUIRY - Information requests, policy servicing
 
+**IMPORTANT - SCORING CALCULATION:**
+- **DO NOT calculate or return overallScore** - We will calculate this separately as a weighted average
+- **Score all 7 core QA dimensions** (rapport through followUp)
+- **Score all 6 UK compliance dimensions** (callOpeningCompliance through complaintsHandling)
+- The system will automatically calculate:
+  - **QA Score**: Average of 7 core QA dimensions
+  - **Compliance Score**: Average of applicable UK compliance dimensions (excluding nulls)
+  - **Overall Score**: Weighted average (70% QA + 30% Compliance)
+
 Additionally, identify:
 - **Call Type**: Identify and return as callType field (one of: "new_business_sales", "renewals", "mid_term_adjustment", "claims_inquiry", "complaints", "general_inquiry")
 - **Key Moments**: 10-15 specific moments spread across ALL dimensions INCLUDING the UK compliance dimensions. Each moment must:
-  - Include the exact dimension category (rapport, needsDiscovery, productKnowledge, objectionHandling, closing, compliance, professionalism, followUp, callOpeningCompliance, dataProtectionCompliance, mandatoryDisclosures, tcfCompliance, salesProcessCompliance, complaintsHandling)
+  - Include the exact dimension category (rapport, needsDiscovery, productKnowledge, objectionHandling, closing, professionalism, followUp, callOpeningCompliance, dataProtectionCompliance, mandatoryDisclosures, tcfCompliance, salesProcessCompliance, complaintsHandling)
   - Have a precise timestamp in seconds matching the transcript
   - **CRITICAL**: Include an EXACT, VERBATIM quote copied directly from the transcript - DO NOT paraphrase, summarize, or infer dialogue
   - The quote must be a direct copy-paste from the transcript text, not a summary or interpretation
@@ -376,14 +386,13 @@ Respond in the following JSON format (and ONLY JSON, no markdown formatting):
 
 {
   "callType": "new_business_sales",
-  "overallScore": 7.5,
+  "overallScore": 0,
   "scores": {
     "rapport": 8,
     "needsDiscovery": 7,
     "productKnowledge": 9,
-    "objectionHandling": 6,
+    "objectionHandling": 8,
     "closing": 7,
-    "compliance": 9,
     "professionalism": 8,
     "followUp": 7,
     "callOpeningCompliance": 8,
@@ -462,17 +471,18 @@ function parseClaudeResponse(responseText: string): ClaudeAnalysisResponse {
     // Validate and set defaults
     const analysis: ClaudeAnalysisResponse = {
       callType: parsed.callType || 'general_inquiry',
-      overallScore: parsed.overallScore || 0,
+      overallScore: parsed.overallScore || 0, // Will be recalculated in storage layer
       scores: {
-        // Core QA dimensions
+        // Core QA dimensions (7 dimensions)
         rapport: parsed.scores?.rapport || 0,
         needsDiscovery: parsed.scores?.needsDiscovery || 0,
         productKnowledge: parsed.scores?.productKnowledge || 0,
-        objectionHandling: parsed.scores?.objectionHandling || 0,
+        objectionHandling: parsed.scores?.objectionHandling ?? 8, // Default 8/10 if no objections raised
         closing: parsed.scores?.closing || 0,
-        compliance: parsed.scores?.compliance || 0,
         professionalism: parsed.scores?.professionalism || 0,
         followUp: parsed.scores?.followUp || 0,
+        // Legacy compliance dimension (deprecated, optional)
+        compliance: parsed.scores?.compliance, // Only include if present in old analyses
         // UK Compliance sub-dimensions
         callOpeningCompliance: parsed.scores?.callOpeningCompliance || 0,
         dataProtectionCompliance: parsed.scores?.dataProtectionCompliance || 0,

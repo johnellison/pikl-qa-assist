@@ -77,8 +77,12 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
           clearInterval(intervalRef.current);
         }
       },
-      onerror: (id, error) => {
-        console.error('Audio player error:', error);
+      onloaderror: () => {
+        console.error('Audio player error: Failed to load audio');
+        setIsLoading(false);
+      },
+      onplayerror: () => {
+        console.error('Audio player error: Failed to play audio');
         setIsLoading(false);
       },
     });

@@ -3,11 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Phone, Users, Upload, Settings, BarChart, Moon, Sun } from 'lucide-react';
+import { Home, Phone, Users, Upload, Settings, BarChart, Moon, Sun, ShieldCheck, FileText } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
 
-const sidebarNavItems = [
+interface NavItem {
+  title: string;
+  href: string;
+  icon: any;
+  subItems?: Array<{ title: string; href: string }>;
+}
+
+const sidebarNavItems: NavItem[] = [
   {
     title: 'Dashboard',
     href: '/',
@@ -32,6 +39,14 @@ const sidebarNavItems = [
     title: 'Analytics',
     href: '/analytics',
     icon: BarChart,
+    subItems: [
+      { title: 'QA Log', href: '/reports/qa-log' },
+    ],
+  },
+  {
+    title: 'Compliance Rules',
+    href: '/admin/compliance-rules',
+    icon: ShieldCheck,
   },
   {
     title: 'Settings',
@@ -59,21 +74,47 @@ export function Sidebar() {
           {sidebarNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
+            const hasActiveSubItem = item.subItems?.some(sub => pathname === sub.href);
 
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'group flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors',
-                  isActive
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground'
+              <div key={item.href}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    'group flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors',
+                    isActive || hasActiveSubItem
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  <Icon className="mr-3 h-5 w-5" />
+                  <span>{item.title}</span>
+                </Link>
+
+                {/* Sub-items */}
+                {item.subItems && item.subItems.length > 0 && (
+                  <div className="ml-8 mt-1 space-y-1">
+                    {item.subItems.map((subItem) => {
+                      const isSubActive = pathname === subItem.href;
+                      return (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href}
+                          className={cn(
+                            'flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                            isSubActive
+                              ? 'bg-accent/50 text-accent-foreground font-medium'
+                              : 'text-muted-foreground'
+                          )}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          <span>{subItem.title}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 )}
-              >
-                <Icon className="mr-3 h-5 w-5" />
-                <span>{item.title}</span>
-              </Link>
+              </div>
             );
           })}
         </nav>

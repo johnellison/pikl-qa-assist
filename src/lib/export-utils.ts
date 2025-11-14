@@ -1,12 +1,13 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { Call, CallAnalysis } from '@/types/call';
+import type { Call } from '@/types/call';
+import type { Analysis } from '@/types/analysis';
 import type { QALogEntry } from '@/types/qa-log';
 
 /**
  * Export individual call analysis as PDF
  */
-export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?: QALogEntry) {
+export function exportCallToPDF(call: Call, analysis: Analysis, qaLogEntry?: QALogEntry) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 20;
@@ -74,6 +75,13 @@ export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?:
                    analysis.overallScore >= 8 ? 94 : analysis.overallScore >= 6 ? 40 : 38);
   doc.text(`${analysis.overallScore.toFixed(1)}/10`, pageWidth / 2, yPos, { align: 'center' });
 
+  // Add weighted calculation subtitle
+  yPos += 6;
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.setFont('helvetica', 'italic');
+  doc.text('Weighted Average: 70% QA + 30% Compliance', pageWidth / 2, yPos, { align: 'center' });
+
   if (qaLogEntry) {
     yPos += 8;
     doc.setFontSize(10);
@@ -93,6 +101,14 @@ export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?:
   doc.setTextColor(0);
   doc.text('Quality Assurance Dimensions', 14, yPos);
 
+  // Add QA aggregate score if available
+  if (analysis.qaScore !== undefined) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`QA Score: ${analysis.qaScore.toFixed(1)}/10`, 14, yPos + 5);
+    yPos += 8;
+  }
+
   yPos += 8;
 
   const qaScores = [
@@ -101,16 +117,18 @@ export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?:
     ['Product Knowledge', analysis.scores.productKnowledge],
     ['Objection Handling', analysis.scores.objectionHandling],
     ['Closing', analysis.scores.closing],
-    ['Compliance', analysis.scores.compliance],
     ['Professionalism', analysis.scores.professionalism],
     ['Follow-Up', analysis.scores.followUp],
-  ];
+  ].filter(([_, score]) => score !== undefined && score !== null); // Filter out undefined scores
 
-  const qaTableData = qaScores.map(([dimension, score]) => [
-    dimension,
-    `${score}/10`,
-    score >= 8 ? 'Excellent' : score >= 6 ? 'Good' : score >= 4 ? 'Fair' : 'Needs Improvement'
-  ]);
+  const qaTableData = qaScores.map(([dimension, score]) => {
+    const numScore = typeof score === 'number' ? score : parseFloat(String(score));
+    return [
+      dimension,
+      `${score}/10`,
+      numScore >= 8 ? 'Excellent' : numScore >= 6 ? 'Good' : numScore >= 4 ? 'Fair' : 'Needs Improvement'
+    ];
+  });
 
   autoTable(doc, {
     startY: yPos,
@@ -128,6 +146,14 @@ export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?:
   doc.setFont('helvetica', 'bold');
   doc.text('UK Compliance Dimensions', 14, yPos);
 
+  // Add Compliance aggregate score if available
+  if (analysis.complianceScore !== undefined) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Compliance Score: ${analysis.complianceScore.toFixed(1)}/10`, 14, yPos + 5);
+    yPos += 8;
+  }
+
   yPos += 8;
 
   const complianceScores = [
@@ -141,11 +167,14 @@ export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?:
 
   const complianceTableData = complianceScores
     .filter(([_, score]) => score !== null)
-    .map(([dimension, score]) => [
-      dimension,
-      `${score}/10`,
-      score === 10 ? 'Full Compliance' : score >= 8 ? 'Compliant' : score >= 7 ? 'Minor Gap' : 'Breach'
-    ]);
+    .map(([dimension, score]) => {
+      const numScore = typeof score === 'number' ? score : parseFloat(String(score ?? 0));
+      return [
+        dimension,
+        `${score}/10`,
+        numScore === 10 ? 'Full Compliance' : numScore >= 8 ? 'Compliant' : numScore >= 7 ? 'Minor Gap' : 'Breach'
+      ];
+    });
 
   autoTable(doc, {
     startY: yPos,
@@ -177,12 +206,12 @@ export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?:
       doc.setFont('helvetica', 'bold');
 
       // Severity color
-      const severityColor =
+      const severityColor: [number, number, number] =
         issue.severity === 'critical' ? [220, 38, 38] :
         issue.severity === 'high' ? [234, 88, 12] :
         issue.severity === 'medium' ? [202, 138, 4] : [59, 130, 246];
 
-      doc.setTextColor(...severityColor);
+      doc.setTextColor(severityColor[0], severityColor[1], severityColor[2]);
       doc.text(`${idx + 1}. ${issue.severity.toUpperCase()}`, 14, yPos);
 
       doc.setTextColor(0);
@@ -218,7 +247,7 @@ export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?:
   doc.setFont('helvetica', 'normal');
 
   if (analysis.coachingRecommendations && analysis.coachingRecommendations.length > 0) {
-    analysis.coachingRecommendations.forEach((recommendation, idx) => {
+    analysis.coachingRecommendations.forEach((recommendation: string, idx: number) => {
       if (yPos > 250) {
         doc.addPage();
         yPos = 20;
@@ -283,7 +312,7 @@ export function exportCallToPDF(call: Call, analysis: CallAnalysis, qaLogEntry?:
 /**
  * Export individual call analysis as CSV
  */
-export function exportCallToCSV(call: Call, analysis: CallAnalysis, qaLogEntry?: QALogEntry) {
+export function exportCallToCSV(call: Call, analysis: Analysis, qaLogEntry?: QALogEntry) {
   const rows: string[][] = [];
 
   // Metadata
@@ -294,49 +323,50 @@ export function exportCallToCSV(call: Call, analysis: CallAnalysis, qaLogEntry?:
   rows.push(['Duration (seconds)', call.duration.toString()]);
   rows.push(['Call Type', analysis.callType || 'N/A']);
   rows.push(['Reference', call.filename]);
-  if (qaLogEntry) {
-    rows.push(['QA Number', qaLogEntry.qaNumber]);
-    rows.push(['Internal Score', qaLogEntry.internalScore.toString()]);
-    rows.push(['Mandatory Compliance', qaLogEntry.mandatoryCompliance]);
-  }
+  // Always include QA fields for consistent CSV structure
+  rows.push(['QA Number', qaLogEntry?.qaNumber || 'N/A']);
+  rows.push(['Internal Score', qaLogEntry?.internalScore?.toString() || 'N/A']);
+  rows.push(['Mandatory Compliance', qaLogEntry?.mandatoryCompliance || 'N/A']);
   rows.push([]);
 
   // Overall Score
   rows.push(['Overall Performance']);
   rows.push(['Overall Score', analysis.overallScore.toFixed(1)]);
+  rows.push(['Note', 'Weighted Average: 70% QA + 30% Compliance']);
+  if (analysis.qaScore !== undefined) {
+    rows.push(['QA Score', analysis.qaScore.toFixed(1)]);
+  }
+  if (analysis.complianceScore !== undefined) {
+    rows.push(['Compliance Score', analysis.complianceScore.toFixed(1)]);
+  }
   rows.push([]);
 
   // QA Dimensions
-  rows.push(['QA Dimensions', 'Score']);
+  rows.push(['QA Dimensions (7 core dimensions)', 'Score']);
   rows.push(['Rapport', analysis.scores.rapport.toString()]);
   rows.push(['Needs Discovery', analysis.scores.needsDiscovery.toString()]);
   rows.push(['Product Knowledge', analysis.scores.productKnowledge.toString()]);
   rows.push(['Objection Handling', analysis.scores.objectionHandling.toString()]);
   rows.push(['Closing', analysis.scores.closing.toString()]);
-  rows.push(['Compliance', analysis.scores.compliance.toString()]);
   rows.push(['Professionalism', analysis.scores.professionalism.toString()]);
   rows.push(['Follow-Up', analysis.scores.followUp.toString()]);
   rows.push([]);
 
   // UK Compliance
-  rows.push(['UK Compliance Dimensions', 'Score']);
-  rows.push(['Call Opening Compliance', analysis.scores.callOpeningCompliance.toString()]);
-  rows.push(['Data Protection Compliance', analysis.scores.dataProtectionCompliance.toString()]);
-  rows.push(['Mandatory Disclosures', analysis.scores.mandatoryDisclosures.toString()]);
-  rows.push(['TCF Compliance', analysis.scores.tcfCompliance.toString()]);
-  if (analysis.scores.salesProcessCompliance !== null && analysis.scores.salesProcessCompliance !== undefined) {
-    rows.push(['Sales Process Compliance', analysis.scores.salesProcessCompliance.toString()]);
-  }
-  if (analysis.scores.complaintsHandling !== null && analysis.scores.complaintsHandling !== undefined) {
-    rows.push(['Complaints Handling', analysis.scores.complaintsHandling.toString()]);
-  }
+  rows.push(['UK Compliance Dimensions (6 dimensions)', 'Score']);
+  rows.push(['Call Opening Compliance', analysis.scores.callOpeningCompliance?.toString() || 'N/A']);
+  rows.push(['Data Protection Compliance', analysis.scores.dataProtectionCompliance?.toString() || 'N/A']);
+  rows.push(['Mandatory Disclosures', analysis.scores.mandatoryDisclosures?.toString() || 'N/A']);
+  rows.push(['TCF Compliance', analysis.scores.tcfCompliance?.toString() || 'N/A']);
+  rows.push(['Sales Process Compliance', analysis.scores.salesProcessCompliance?.toString() || 'N/A']);
+  rows.push(['Complaints Handling', analysis.scores.complaintsHandling?.toString() || 'N/A']);
   rows.push([]);
 
   // Compliance Issues
   if (analysis.complianceIssues && analysis.complianceIssues.length > 0) {
     rows.push(['Compliance Issues']);
     rows.push(['Severity', 'Issue', 'Regulatory Reference']);
-    analysis.complianceIssues.forEach((issue) => {
+    analysis.complianceIssues.forEach((issue: any) => {
       rows.push([
         issue.severity,
         `"${issue.issue.replace(/"/g, '""')}"`,
@@ -349,7 +379,7 @@ export function exportCallToCSV(call: Call, analysis: CallAnalysis, qaLogEntry?:
   // Coaching Recommendations
   if (analysis.coachingRecommendations && analysis.coachingRecommendations.length > 0) {
     rows.push(['Coaching Recommendations']);
-    analysis.coachingRecommendations.forEach((rec, idx) => {
+    analysis.coachingRecommendations.forEach((rec: string, idx: number) => {
       rows.push([`${idx + 1}`, `"${rec.replace(/"/g, '""')}"`]);
     });
     rows.push([]);

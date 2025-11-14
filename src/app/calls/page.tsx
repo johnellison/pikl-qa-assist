@@ -242,8 +242,13 @@ function CallsContent() {
                       </Badge>
                     )}
                     {call.overallScore && (
+                      <Badge variant="default" className="font-mono">
+                        Overall: {call.overallScore.toFixed(1)}/10
+                      </Badge>
+                    )}
+                    {call.qaScore && (
                       <Badge variant="outline" className="font-mono">
-                        QA: {call.overallScore.toFixed(1)}/10
+                        QA: {call.qaScore.toFixed(1)}/10
                       </Badge>
                     )}
                     {call.complianceScore && (

@@ -23,9 +23,10 @@ export function parseCallFilename(filename: string): ParseResult {
   // Try two patterns:
   // Pattern 1: [LastName, FirstName]_AgentID-Phone_Timestamp(CallID)
   // Pattern 2: [FirstName LastName]_AgentID-Phone_Timestamp(CallID)
+  // Phone can be digits or text like "anonymous"
 
-  const patternWithComma = /^\[([^,]+),\s*([^\]]+)\]_(\d+)-(\d+)_(\d{14})\((\d+)\)$/;
-  const patternWithoutComma = /^\[([^\]]+)\]_(\d+)-(\d+)_(\d{14})\((\d+)\)$/;
+  const patternWithComma = /^\[([^,]+),\s*([^\]]+)\]_(\d+)-([^_]+)_(\d{14})\((\d+)\)$/;
+  const patternWithoutComma = /^\[([^\]]+)\]_(\d+)-([^_]+)_(\d{14})\((\d+)\)$/;
 
   let match = nameWithoutExt.match(patternWithComma);
   let agentName: string;

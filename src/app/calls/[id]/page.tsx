@@ -290,6 +290,9 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
               <TrendingUp className="h-5 w-5" />
               Overall Score
             </CardTitle>
+            <CardDescription>
+              Weighted average: 70% QA Performance + 30% Compliance
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-6">
@@ -304,6 +307,19 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
                 {getScoreLabel(analysis.overallScore)}
               </Badge>
             </div>
+            {/* Show breakdown if available */}
+            {analysis.qaScore !== undefined && analysis.complianceScore !== undefined && (
+              <div className="mt-4 flex gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">QA Score:</span>
+                  <Badge variant="outline">{analysis.qaScore.toFixed(1)}/10</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Compliance Score:</span>
+                  <Badge variant="outline">{analysis.complianceScore.toFixed(1)}/10</Badge>
+                </div>
+              </div>
+            )}
             {analysis.summary && (
               <p className="mt-4 text-muted-foreground">{analysis.summary}</p>
             )}
@@ -329,13 +345,22 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
       {analysis && (
         <Card>
           <CardHeader>
-            <CardTitle>Core QA Dimension Scores</CardTitle>
-            <CardDescription>Click any dimension to see details and evidence from the call</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Core QA Dimension Scores</CardTitle>
+                <CardDescription>Click any dimension to see details and evidence from the call</CardDescription>
+              </div>
+              {analysis.qaScore !== undefined && (
+                <Badge variant="secondary" className="text-lg px-4 py-2">
+                  QA Score: {analysis.qaScore.toFixed(1)}/10
+                </Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {Object.entries(analysis.scores)
-                .filter(([key]) => !['callOpeningCompliance', 'dataProtectionCompliance', 'mandatoryDisclosures', 'tcfCompliance', 'salesProcessCompliance', 'complaintsHandling'].includes(key))
+                .filter(([key]) => !['compliance', 'callOpeningCompliance', 'dataProtectionCompliance', 'mandatoryDisclosures', 'tcfCompliance', 'salesProcessCompliance', 'complaintsHandling'].includes(key))
                 .map(([key, score]) => {
                 const isExpanded = expandedDimensions[key];
                 const dimensionLabel = dimensionLabels[key as keyof typeof dimensionLabels];
@@ -439,30 +464,6 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
                             </p>
                           )}
                         </div>
-
-                        {/* Coaching Tips (filtered by relevance) */}
-                        {analysis.coachingRecommendations.some((rec) =>
-                          rec.toLowerCase().includes(dimensionLabel.toLowerCase().split(' ')[0])
-                        ) && (
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-semibold flex items-center gap-2">
-                              <Lightbulb className="h-4 w-4" />
-                              Coaching Tips
-                            </h4>
-                            <ul className="space-y-1">
-                              {analysis.coachingRecommendations
-                                .filter((rec) =>
-                                  rec.toLowerCase().includes(dimensionLabel.toLowerCase().split(' ')[0])
-                                )
-                                .map((rec, idx) => (
-                                  <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                                    <span className="text-primary mt-0.5">•</span>
-                                    <span>{rec}</span>
-                                  </li>
-                                ))}
-                            </ul>
-                          </div>
-                        )}
                       </CollapsibleContent>
                     </div>
                   </Collapsible>
@@ -477,11 +478,20 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
       {analysis && (
         <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="text-2xl">🇬🇧</span>
-              UK Compliance Dimensions
-            </CardTitle>
-            <CardDescription>Regulatory compliance scores based on FCA, ICOBS, GDPR, and IDD requirements</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">🇬🇧</span>
+                  UK Compliance Dimensions
+                </CardTitle>
+                <CardDescription>Regulatory compliance scores based on FCA, ICOBS, GDPR, and IDD requirements</CardDescription>
+              </div>
+              {analysis.complianceScore !== undefined && (
+                <Badge variant="secondary" className="text-lg px-4 py-2 bg-blue-100 dark:bg-blue-900">
+                  Compliance Score: {analysis.complianceScore.toFixed(1)}/10
+                </Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="space-y-3">
@@ -608,29 +618,86 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
                           )}
                         </div>
 
-                        {/* Coaching Tips (filtered by relevance) */}
-                        {analysis.coachingRecommendations.some((rec) =>
-                          rec.toLowerCase().includes(dimensionLabel.toLowerCase().split(' ')[0])
-                        ) && (
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-semibold flex items-center gap-2">
-                              <Lightbulb className="h-4 w-4" />
-                              Coaching Focus
-                            </h4>
-                            <ul className="space-y-2">
-                              {analysis.coachingRecommendations
-                                .filter((rec) =>
-                                  rec.toLowerCase().includes(dimensionLabel.toLowerCase().split(' ')[0])
-                                )
-                                .map((rec, idx) => (
-                                  <li key={idx} className="flex items-start gap-2">
-                                    <span className="text-primary mt-0.5">•</span>
-                                    <span className="flex-1 text-sm">{rec}</span>
-                                  </li>
-                                ))}
-                            </ul>
-                          </div>
-                        )}
+                        {/* Compliance Issues for this Dimension */}
+                        {analysis.complianceIssues && analysis.complianceIssues.length > 0 && (() => {
+                          const relevantIssues = analysis.complianceIssues.filter((issue) => {
+                            const isObject = typeof issue === 'object' && issue !== null;
+                            const issueObj = isObject ? issue : { issue: issue, severity: 'medium', category: 'general' };
+                            return issueObj.category === key;
+                          });
+
+                          if (relevantIssues.length === 0) return null;
+
+                          return (
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                Compliance Issues
+                              </h4>
+                              <div className="space-y-2">
+                                {relevantIssues.map((issue, idx) => {
+                                  const isObject = typeof issue === 'object' && issue !== null;
+                                  const issueObj = isObject ? issue : { issue: issue, severity: 'medium', category: 'general', regulatoryReference: '', timestamp: null, remediation: '' };
+
+                                  const severityConfig = {
+                                    critical: { emoji: '⚠️', badge: 'bg-red-600 text-white', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-900' },
+                                    high: { emoji: '🟠', badge: 'bg-orange-600 text-white', bg: 'bg-orange-50 dark:bg-orange-950/30', border: 'border-orange-200 dark:border-orange-900' },
+                                    medium: { emoji: 'ℹ️', badge: 'bg-yellow-600 text-white', bg: 'bg-yellow-50 dark:bg-yellow-950/30', border: 'border-yellow-200 dark:border-yellow-900' },
+                                    low: { emoji: '✓', badge: 'bg-green-600 text-white', bg: 'bg-green-50 dark:bg-green-950/30', border: 'border-green-200 dark:border-green-900' },
+                                  };
+
+                                  const config = severityConfig[issueObj.severity as keyof typeof severityConfig] || severityConfig.medium;
+
+                                  return (
+                                    <div key={idx} className={`p-3 rounded border ${config.bg} ${config.border}`}>
+                                      <div className="flex items-start gap-2">
+                                        <span className="text-lg">{config.emoji}</span>
+                                        <div className="flex-1 space-y-2">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <Badge className={`text-xs uppercase font-bold ${config.badge}`}>
+                                              {issueObj.severity}
+                                            </Badge>
+                                            {issueObj.timestamp !== null && issueObj.timestamp !== undefined && (
+                                              <button
+                                                onClick={() => handleTimestampClick(issueObj.timestamp!)}
+                                                className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                                                title="Click to jump to this moment"
+                                              >
+                                                {Math.floor(issueObj.timestamp / 60)}:{(Math.floor(issueObj.timestamp % 60)).toString().padStart(2, '0')}
+                                              </button>
+                                            )}
+                                          </div>
+                                          <p className="text-sm">{issueObj.issue}</p>
+                                          {issueObj.regulatoryReference && (
+                                            <div className="text-xs">
+                                              <span className="font-semibold text-muted-foreground">Reference: </span>
+                                              {(() => {
+                                                const link = getRegulatoryLink(issueObj.regulatoryReference);
+                                                return link ? (
+                                                  <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
+                                                    {issueObj.regulatoryReference} <ExternalLink className="h-3 w-3" />
+                                                  </a>
+                                                ) : (
+                                                  <span className="text-muted-foreground">{issueObj.regulatoryReference}</span>
+                                                );
+                                              })()}
+                                            </div>
+                                          )}
+                                          {issueObj.remediation && (
+                                            <div className="pt-2 border-t border-current/20">
+                                              <p className="text-xs font-semibold text-muted-foreground">Remediation:</p>
+                                              <p className="text-xs mt-1">{issueObj.remediation}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </CollapsibleContent>
                     </div>
                   </Collapsible>
@@ -642,149 +709,125 @@ export default function CallDetailPage({ params }: { params: Promise<{ id: strin
       )}
 
       {/* Coaching Recommendations */}
-      {analysis && analysis.coachingRecommendations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5" />
-              Coaching Recommendations
-            </CardTitle>
-            <CardDescription>Actionable feedback for improvement</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {analysis.coachingRecommendations.map((rec, idx) => (
-                <li key={idx} className="flex items-start gap-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm flex-shrink-0">
-                    {idx + 1}
+      {analysis && analysis.coachingRecommendations.length > 0 && (() => {
+        // Get compliance issues for categorization
+        const criticalIssues = analysis.complianceIssues?.filter((issue: any) =>
+          issue.severity === 'critical' || issue.severity === 'high'
+        ) || [];
+
+        // Categorize coaching recommendations
+        const strengths: string[] = [];
+        const improvements: string[] = [];
+        const critical: string[] = [];
+
+        analysis.coachingRecommendations.forEach((rec: string) => {
+          const lowerRec = rec.toLowerCase();
+
+          // Critical: mentions compliance, regulatory, GDPR, FCA, disclosure, etc.
+          if (lowerRec.includes('must') || lowerRec.includes('critical') || lowerRec.includes('compliance') ||
+              lowerRec.includes('regulatory') || lowerRec.includes('gdpr') || lowerRec.includes('fca') ||
+              lowerRec.includes('disclosure') || lowerRec.includes('call recording') || lowerRec.includes('data protection')) {
+            critical.push(rec);
+          }
+          // Strengths: high scores (9→10), excellent, strong, great rapport, etc.
+          else if (lowerRec.includes('→10') || lowerRec.includes('excellent') || lowerRec.includes('strong') ||
+                   lowerRec.includes('exceptional') || lowerRec.includes('9→10') || lowerRec.includes('10/10')) {
+            strengths.push(rec);
+          }
+          // Everything else is improvement
+          else {
+            improvements.push(rec);
+          }
+        });
+
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-amber-500" />
+                Coaching Feedback for {call.agentName}
+              </CardTitle>
+              <CardDescription>
+                Personalized coaching insights to help you grow and maintain compliance
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Strengths Section */}
+              {strengths.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">✅</span>
+                    <h3 className="text-base font-bold text-green-700 dark:text-green-400">Strengths - What You Did Well</h3>
                   </div>
-                  <span className="flex-1">{rec}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
+                  <div className="pl-7 space-y-2 bg-green-50/50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-900">
+                    {strengths.map((rec, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <span className="text-green-600 dark:text-green-400 mt-0.5">•</span>
+                        <span className="flex-1 text-sm">{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-      {/* Compliance Issues */}
-      {analysis && analysis.complianceIssues && analysis.complianceIssues.length > 0 && (
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Compliance Issues
-            </CardTitle>
-            <CardDescription>Critical compliance violations detected</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {analysis.complianceIssues.map((issue, idx) => {
-                // Handle both string format (legacy) and object format (new)
-                const isObject = typeof issue === 'object' && issue !== null;
-                const issueObj = isObject ? issue : { issue: issue, severity: 'medium', category: 'general', regulatoryReference: '', timestamp: null, remediation: '' };
+              {/* Areas for Improvement */}
+              {improvements.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📈</span>
+                    <h3 className="text-base font-bold text-blue-700 dark:text-blue-400">Areas for Improvement</h3>
+                  </div>
+                  <div className="pl-7 space-y-2 bg-blue-50/50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
+                    {improvements.map((rec, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                        <span className="flex-1 text-sm">{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                // Severity configurations with emojis and colors
-                const severityConfig = {
-                  critical: {
-                    emoji: '🔴',
-                    bg: 'bg-red-50 dark:bg-red-950/30',
-                    border: 'border-red-300 dark:border-red-900',
-                    badgeClass: 'bg-red-600 text-white hover:bg-red-700',
-                    textColor: 'text-red-900 dark:text-red-200'
-                  },
-                  high: {
-                    emoji: '🟠',
-                    bg: 'bg-orange-50 dark:bg-orange-950/30',
-                    border: 'border-orange-300 dark:border-orange-900',
-                    badgeClass: 'bg-orange-600 text-white hover:bg-orange-700',
-                    textColor: 'text-orange-900 dark:text-orange-200'
-                  },
-                  medium: {
-                    emoji: '🟡',
-                    bg: 'bg-yellow-50 dark:bg-yellow-950/30',
-                    border: 'border-yellow-300 dark:border-yellow-900',
-                    badgeClass: 'bg-yellow-600 text-white hover:bg-yellow-700',
-                    textColor: 'text-yellow-900 dark:text-yellow-200'
-                  },
-                  low: {
-                    emoji: '🟢',
-                    bg: 'bg-green-50 dark:bg-green-950/30',
-                    border: 'border-green-300 dark:border-green-900',
-                    badgeClass: 'bg-green-600 text-white hover:bg-green-700',
-                    textColor: 'text-green-900 dark:text-green-200'
-                  },
-                };
-
-                const config = severityConfig[issueObj.severity as keyof typeof severityConfig] || severityConfig.medium;
-
-                return (
-                  <div key={idx} className={`flex items-start gap-3 p-4 rounded-lg ${config.bg} border ${config.border}`}>
-                    <span className="text-2xl mt-0.5">{config.emoji}</span>
-                    <div className="flex-1 space-y-3">
-                      {/* Header with severity and timestamp */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className={`text-xs uppercase font-semibold ${config.badgeClass}`}>
-                          {issueObj.severity}
-                        </Badge>
-                        {issueObj.category && (
-                          <Badge variant="outline" className="text-xs">
-                            {issueObj.category.replace(/([A-Z])/g, ' $1').trim()}
-                          </Badge>
+              {/* Critical Compliance Issues */}
+              {critical.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚠️</span>
+                    <h3 className="text-base font-bold text-red-700 dark:text-red-400">Critical Compliance Issues - Requires Immediate Attention</h3>
+                  </div>
+                  <div className="pl-7 space-y-3 bg-red-50/50 dark:bg-red-950/20 p-4 rounded-lg border border-red-200 dark:border-red-900">
+                    {critical.map((rec, idx) => (
+                      <div key={idx} className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-red-600 dark:text-red-400 mt-0.5">•</span>
+                          <span className="flex-1 text-sm font-medium">{rec}</span>
+                        </div>
+                        {/* Add business context for critical items */}
+                        {rec.toLowerCase().includes('call recording') && (
+                          <p className="text-xs text-muted-foreground pl-3 italic border-l-2 border-red-300 dark:border-red-800 ml-2">
+                            📘 Why this matters: FCA requires call recording disclosure (SYSC 9.3.2R) to maintain our regulatory authorization. Non-compliance can result in enforcement action and reputational damage.
+                          </p>
                         )}
-                        {issueObj.timestamp !== null && issueObj.timestamp !== undefined && (
-                          <button
-                            onClick={() => handleTimestampClick(issueObj.timestamp!)}
-                            className="font-mono text-xs font-semibold px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-                            title="Click to jump to this moment in the audio"
-                          >
-                            {Math.floor(issueObj.timestamp / 60)}:{(Math.floor(issueObj.timestamp % 60)).toString().padStart(2, '0')}
-                          </button>
+                        {rec.toLowerCase().includes('data protection') && (
+                          <p className="text-xs text-muted-foreground pl-3 italic border-l-2 border-red-300 dark:border-red-800 ml-2">
+                            📘 Why this matters: GDPR Article 13 requires clear privacy notices. Data protection failures can lead to ICO fines up to £17.5M and customer trust erosion.
+                          </p>
+                        )}
+                        {(rec.toLowerCase().includes('disclosure') || rec.toLowerCase().includes('fca')) && (
+                          <p className="text-xs text-muted-foreground pl-3 italic border-l-2 border-red-300 dark:border-red-800 ml-2">
+                            📘 Why this matters: FCA mandatory disclosures (firm identity, regulatory status, fees) are required by ICOBS 4.2.1R. Missing disclosures can invalidate insurance contracts and expose Pikl to regulatory sanctions.
+                          </p>
                         )}
                       </div>
-
-                      {/* Issue description */}
-                      <p className={`text-sm font-medium ${config.textColor}`}>
-                        {issueObj.issue}
-                      </p>
-
-                      {/* Regulatory reference */}
-                      {issueObj.regulatoryReference && (
-                        <div className="text-xs">
-                          <span className="font-semibold text-muted-foreground">Regulatory Reference: </span>
-                          {(() => {
-                            const link = getRegulatoryLink(issueObj.regulatoryReference);
-                            return link ? (
-                              <a
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
-                              >
-                                {issueObj.regulatoryReference}
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            ) : (
-                              <span className="text-muted-foreground">{issueObj.regulatoryReference}</span>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      {/* Remediation */}
-                      {issueObj.remediation && (
-                        <div className="pt-2 border-t border-current/20">
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">Remediation:</p>
-                          <p className="text-sm">{issueObj.remediation}</p>
-                        </div>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
 
       {/* Transcript */}
       {transcript && (

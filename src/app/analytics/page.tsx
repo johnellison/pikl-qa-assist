@@ -15,6 +15,7 @@ interface AnalyticsStats {
   totalQuotes: number;
   totalSales: number;
   totalRenewals: number;
+  callTypeCounts: { type: string; count: number; icon: string; color: string }[];
 }
 
 export default function AnalyticsPage() {
@@ -38,10 +39,10 @@ export default function AnalyticsPage() {
       // Fetch analysis data for outcome metrics
       const analysesPromises = completeCalls.map(async (call) => {
         try {
-          const analysisResponse = await fetch(`/api/analysis/${call.id}`);
+          const analysisResponse = await fetch(`/api/calls/${call.id}`);
           if (analysisResponse.ok) {
             const analysisData = await analysisResponse.json();
-            return analysisData.data;
+            return analysisData.data?.analysis || null;
           }
         } catch (err) {
           console.error(`Failed to fetch analysis for ${call.id}:`, err);
@@ -134,6 +135,42 @@ export default function AnalyticsPage() {
         return sum + (analysis.outcomeMetrics?.renewalsCompleted || 0);
       }, 0);
 
+      // Calculate call type breakdown from calls data (not analysis)
+      const callTypeMap: Record<string, { count: number; icon: string; color: string }> = {
+        'new_business_sales': { count: 0, icon: '💼', color: 'text-blue-600' },
+        'renewals': { count: 0, icon: '🔄', color: 'text-purple-600' },
+        'mid_term_adjustment': { count: 0, icon: '📝', color: 'text-green-600' },
+        'claims_inquiry': { count: 0, icon: '🛡️', color: 'text-orange-600' },
+        'complaints': { count: 0, icon: '⚠️', color: 'text-red-600' },
+        'general_inquiry': { count: 0, icon: '💬', color: 'text-gray-600' },
+      };
+
+      completeCalls.forEach((call) => {
+        const callType = call.callType || 'general_inquiry';
+        if (callTypeMap[callType]) {
+          callTypeMap[callType].count++;
+        }
+      });
+
+      const callTypeCounts = Object.entries(callTypeMap).map(([type, data]) => {
+        // Custom label mapping for better display
+        const labelMap: Record<string, string> = {
+          'new_business_sales': 'New Business Sales',
+          'renewals': 'Renewals',
+          'mid_term_adjustment': 'MTAs',
+          'claims_inquiry': 'Claims',
+          'complaints': 'Complaints',
+          'general_inquiry': 'General Inquiries',
+        };
+
+        return {
+          type: labelMap[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          count: data.count,
+          icon: data.icon,
+          color: data.color,
+        };
+      });
+
       setStats({
         totalCalls,
         averageScore,
@@ -144,6 +181,7 @@ export default function AnalyticsPage() {
         totalQuotes,
         totalSales,
         totalRenewals,
+        callTypeCounts,
       });
       setLoading(false);
     } catch (error) {
@@ -183,10 +221,10 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Quotes Completed</CardTitle>
-            <FileText className="h-4 w-4 text-blue-500" />
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{stats.totalQuotes}</div>
+            <div className="text-3xl font-bold">{stats.totalQuotes}</div>
             <p className="text-xs text-muted-foreground mt-1">Insurance quotes provided</p>
           </CardContent>
         </Card>
@@ -194,10 +232,10 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Sales Completed</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{stats.totalSales}</div>
+            <div className="text-3xl font-bold">{stats.totalSales}</div>
             <p className="text-xs text-muted-foreground mt-1">Policies sold</p>
           </CardContent>
         </Card>
@@ -205,10 +243,10 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Renewals Completed</CardTitle>
-            <RefreshCw className="h-4 w-4 text-purple-500" />
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600">{stats.totalRenewals}</div>
+            <div className="text-3xl font-bold">{stats.totalRenewals}</div>
             <p className="text-xs text-muted-foreground mt-1">Policy renewals processed</p>
           </CardContent>
         </Card>
@@ -272,6 +310,27 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Call Type Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Call Type Breakdown</CardTitle>
+          <CardDescription>Distribution of calls by type and purpose</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {stats.callTypeCounts.map((item) => (
+              <div key={item.type} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                <span className="text-2xl">{item.icon}</span>
+                <div className="flex-1">
+                  <div className="text-2xl font-bold">{item.count}</div>
+                  <p className="text-xs text-muted-foreground">{item.type}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Score Distribution */}
       <Card>

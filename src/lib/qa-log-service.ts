@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import type { Call, CallAnalysis } from '@/types/call';
+import type { Call } from '@/types/call';
+import type { Analysis } from '@/types/analysis';
 import type { QALogEntry, QALogFilters, QALogUpdatePayload } from '@/types/qa-log';
 
 const QA_LOG_FILE = path.join(process.cwd(), 'data', 'qa-log.json');
@@ -15,7 +16,7 @@ const QA_LOG_FILE = path.join(process.cwd(), 'data', 'qa-log.json');
  * 4 = No compliance fails, score over 85% (TARGET)
  * 5 = No compliance fails, score over 95%
  */
-export function calculateInternalScore(analysis: CallAnalysis): 1 | 2 | 3 | 4 | 5 {
+export function calculateInternalScore(analysis: Analysis): 1 | 2 | 3 | 4 | 5 {
   const complianceFails = analysis.complianceIssues.filter(
     (issue) => issue.severity === 'critical' || issue.severity === 'high'
   ).length;
@@ -38,7 +39,7 @@ export function calculateInternalScore(analysis: CallAnalysis): 1 | 2 | 3 | 4 | 
  * FAIL if any critical or high severity compliance issues exist
  * PASS otherwise
  */
-export function calculateMandatoryCompliance(analysis: CallAnalysis): 'pass' | 'fail' {
+export function calculateMandatoryCompliance(analysis: Analysis): 'pass' | 'fail' {
   const criticalOrHighIssues = analysis.complianceIssues.filter(
     (issue) => issue.severity === 'critical' || issue.severity === 'high'
   );
@@ -98,8 +99,9 @@ function extractSource(call: Call): 'inbound' | 'outbound' {
 /**
  * Create QA Log entry from Call and Analysis
  */
-export async function createQALogEntry(call: Call, analysis: CallAnalysis): Promise<QALogEntry> {
-  const qaNumber = await generateQANumber(call.timestamp);
+export async function createQALogEntry(call: Call, analysis: Analysis): Promise<QALogEntry> {
+  const timestampString = call.timestamp.toISOString();
+  const qaNumber = await generateQANumber(timestampString);
   const date = new Date(call.timestamp);
   const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
@@ -119,7 +121,7 @@ export async function createQALogEntry(call: Call, analysis: CallAnalysis): Prom
     agentName: call.agentName,
     agentId: call.agentId,
     auditorName: 'AI', // Default to AI, can be updated manually later
-    dateOfCall: call.timestamp,
+    dateOfCall: timestampString,
 
     // Call details
     reference: call.filename,
@@ -307,7 +309,7 @@ export async function syncQALog(calls: Call[]): Promise<void> {
       // Load analysis
       const analysisPath = path.join(process.cwd(), call.analysisUrl.replace(/^\//, ''));
       const analysisData = await fs.readFile(analysisPath, 'utf-8');
-      const analysis: CallAnalysis = JSON.parse(analysisData);
+      const analysis: Analysis = JSON.parse(analysisData);
 
       // Create QA Log entry
       const entry = await createQALogEntry(call, analysis);

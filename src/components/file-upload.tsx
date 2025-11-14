@@ -18,7 +18,7 @@ interface FileUploadProps {
   onUpload?: (files: File[]) => void;
 }
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (will auto-compress for Whisper API)
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (AssemblyAI supports up to 5GB)
 const MAX_FILES = 50;
 const ACCEPTED_TYPES = {
   'audio/wav': ['.wav'],
@@ -202,7 +202,8 @@ export function FileUpload({
 
     // Set uploaded calls for progress tracking
     if (uploadedCallsList.length > 0) {
-      setUploadedCalls(uploadedCallsList);
+      // Prepend new uploads to existing list (newest at top)
+      setUploadedCalls(prev => [...uploadedCallsList, ...prev]);
 
       // Call parent callback if provided
       if (onUpload) {
@@ -254,7 +255,7 @@ export function FileUpload({
           )}
 
           <div className="mt-4 text-xs text-muted-foreground text-center space-y-1">
-            <p>Maximum file size: 50MB (auto-compressed if needed)</p>
+            <p>Maximum file size: 50MB</p>
             <p>Maximum files per batch: {maxFiles}</p>
             <p>Accepted format: WAV audio files</p>
           </div>

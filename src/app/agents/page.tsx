@@ -26,9 +26,30 @@ interface AgentStats {
     productKnowledge: number;
     objectionHandling: number;
     closing: number;
-    compliance: number;
     professionalism: number;
     followUp: number;
+  };
+  complianceDimensionScores: {
+    callOpeningCompliance: number;
+    dataProtectionCompliance: number;
+    mandatoryDisclosures: number;
+    tcfCompliance: number;
+    salesProcessCompliance: number;
+    complaintsHandling: number;
+  };
+  callTypeCounts: {
+    new_business_sales: number;
+    renewals: number;
+    mid_term_adjustment: number;
+    claims_inquiry: number;
+    complaints: number;
+    general_inquiry: number;
+  };
+  complianceIssues: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
   };
 }
 
@@ -72,9 +93,30 @@ export default function AgentsPage() {
                 productKnowledge: 0,
                 objectionHandling: 0,
                 closing: 0,
-                compliance: 0,
                 professionalism: 0,
                 followUp: 0,
+              },
+              complianceDimensionScores: {
+                callOpeningCompliance: 0,
+                dataProtectionCompliance: 0,
+                mandatoryDisclosures: 0,
+                tcfCompliance: 0,
+                salesProcessCompliance: 0,
+                complaintsHandling: 0,
+              },
+              callTypeCounts: {
+                new_business_sales: 0,
+                renewals: 0,
+                mid_term_adjustment: 0,
+                claims_inquiry: 0,
+                complaints: 0,
+                general_inquiry: 0,
+              },
+              complianceIssues: {
+                critical: 0,
+                high: 0,
+                medium: 0,
+                low: 0,
               },
             });
           }
@@ -112,13 +154,36 @@ export default function AgentsPage() {
               productKnowledge: 0,
               objectionHandling: 0,
               closing: 0,
-              compliance: 0,
               professionalism: 0,
               followUp: 0,
             };
 
+            const complianceDimensionTotals = {
+              callOpeningCompliance: 0,
+              dataProtectionCompliance: 0,
+              mandatoryDisclosures: 0,
+              tcfCompliance: 0,
+              salesProcessCompliance: 0,
+              complaintsHandling: 0,
+            };
+
+            const complianceDimensionCounts = {
+              callOpeningCompliance: 0,
+              dataProtectionCompliance: 0,
+              mandatoryDisclosures: 0,
+              tcfCompliance: 0,
+              salesProcessCompliance: 0,
+              complaintsHandling: 0,
+            };
+
             // Fetch analysis for each completed call
             for (const call of agentCalls) {
+              // Count call types from call data (don't need analysis for this)
+              const callType = call.callType || 'general_inquiry';
+              if (agent.callTypeCounts[callType as keyof typeof agent.callTypeCounts] !== undefined) {
+                agent.callTypeCounts[callType as keyof typeof agent.callTypeCounts]++;
+              }
+
               try {
                 const callResponse = await fetch(`/api/calls/${call.id}`);
                 const callData = await callResponse.json();
@@ -127,11 +192,35 @@ export default function AgentsPage() {
                   const analysis = callData.data.analysis;
                   totalScore += analysis.overallScore;
 
-                  // Aggregate dimension scores
-                  Object.keys(dimensionTotals).forEach((key) => {
-                    dimensionTotals[key as keyof typeof dimensionTotals] +=
-                      analysis.scores[key as keyof typeof analysis.scores] || 0;
+                  // Aggregate dimension scores (without deprecated compliance field)
+                  if (analysis.scores) {
+                    dimensionTotals.rapport += analysis.scores.rapport || 0;
+                    dimensionTotals.needsDiscovery += analysis.scores.needsDiscovery || 0;
+                    dimensionTotals.productKnowledge += analysis.scores.productKnowledge || 0;
+                    dimensionTotals.objectionHandling += analysis.scores.objectionHandling || 0;
+                    dimensionTotals.closing += analysis.scores.closing || 0;
+                    dimensionTotals.professionalism += analysis.scores.professionalism || 0;
+                    dimensionTotals.followUp += analysis.scores.followUp || 0;
+                  }
+
+                  // Aggregate UK compliance dimension scores (handle nulls)
+                  Object.keys(complianceDimensionTotals).forEach((key) => {
+                    const score = analysis.scores[key as keyof typeof analysis.scores];
+                    if (score !== null && score !== undefined) {
+                      complianceDimensionTotals[key as keyof typeof complianceDimensionTotals] += score;
+                      complianceDimensionCounts[key as keyof typeof complianceDimensionCounts]++;
+                    }
                   });
+
+                  // Count compliance issues by severity
+                  if (analysis.complianceIssues && Array.isArray(analysis.complianceIssues)) {
+                    analysis.complianceIssues.forEach((issue: any) => {
+                      const severity = issue.severity || 'medium';
+                      if (agent.complianceIssues[severity as keyof typeof agent.complianceIssues] !== undefined) {
+                        agent.complianceIssues[severity as keyof typeof agent.complianceIssues]++;
+                      }
+                    });
+                  }
                 }
               } catch (err) {
                 console.error(`Error fetching call ${call.id}:`, err);
@@ -144,6 +233,13 @@ export default function AgentsPage() {
             Object.keys(dimensionTotals).forEach((key) => {
               agent.dimensionScores[key as keyof typeof dimensionTotals] =
                 dimensionTotals[key as keyof typeof dimensionTotals] / agentCalls.length;
+            });
+
+            // Calculate average UK compliance dimension scores
+            Object.keys(complianceDimensionTotals).forEach((key) => {
+              const count = complianceDimensionCounts[key as keyof typeof complianceDimensionCounts];
+              agent.complianceDimensionScores[key as keyof typeof complianceDimensionTotals] =
+                count > 0 ? complianceDimensionTotals[key as keyof typeof complianceDimensionTotals] / count : 0;
             });
           }
         }
@@ -308,6 +404,70 @@ export default function AgentsPage() {
                 )}
               </div>
 
+              {/* Call Type Tally */}
+              {agent.completedCalls > 0 && (() => {
+                const types = [
+                  { key: 'new_business_sales', icon: '💼', label: 'Sales' },
+                  { key: 'renewals', icon: '🔄', label: 'Renewals' },
+                  { key: 'mid_term_adjustment', icon: '📝', label: 'MTAs' },
+                  { key: 'claims_inquiry', icon: '🛡️', label: 'Claims' },
+                  { key: 'complaints', icon: '⚠️', label: 'Complaints' },
+                  { key: 'general_inquiry', icon: '💬', label: 'Inquiries' },
+                ];
+
+                const activeCalls = types.filter(t => agent.callTypeCounts[t.key as keyof typeof agent.callTypeCounts] > 0);
+
+                if (activeCalls.length === 0) return null;
+
+                return (
+                  <div className="pt-3 border-t">
+                    <div className="text-xs text-muted-foreground mb-2">Call Types</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {activeCalls.map((type) => (
+                        <div key={type.key} className="space-y-1">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <span>{type.icon}</span>
+                            {type.label}
+                          </div>
+                          <div className="text-lg font-semibold">{agent.callTypeCounts[type.key as keyof typeof agent.callTypeCounts]}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Compliance Issues Breakdown */}
+              {agent.completedCalls > 0 && (() => {
+                const totalIssues = agent.complianceIssues.critical + agent.complianceIssues.high +
+                                   agent.complianceIssues.medium + agent.complianceIssues.low;
+
+                if (totalIssues === 0) return null;
+
+                const issues = [
+                  { key: 'critical', label: 'Critical', count: agent.complianceIssues.critical, color: 'text-red-600' },
+                  { key: 'high', label: 'High', count: agent.complianceIssues.high, color: 'text-orange-600' },
+                  { key: 'medium', label: 'Medium', count: agent.complianceIssues.medium, color: 'text-amber-600' },
+                  { key: 'low', label: 'Low', count: agent.complianceIssues.low, color: 'text-blue-600' },
+                ].filter(issue => issue.count > 0);
+
+                return (
+                  <div className="pt-3 border-t">
+                    <div className="text-xs text-muted-foreground mb-2">Compliance Issues</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {issues.map((issue) => (
+                        <div key={issue.key} className="space-y-1">
+                          <div className="text-xs text-muted-foreground">
+                            {issue.label}
+                          </div>
+                          <div className={`text-lg font-semibold ${issue.color}`}>{issue.count}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* View Details Button */}
               <Link href={`/calls?agentId=${agent.agentId || agent.agentName}`}>
                 <Button variant="outline" className="w-full mt-2">
@@ -319,45 +479,119 @@ export default function AgentsPage() {
         ))}
       </div>
 
-      {/* Top Dimensions */}
-      {agents.length > 0 && agents[0].completedCalls > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Performer Breakdown</CardTitle>
-            <CardDescription>
-              Dimensional scores for {agents[0].agentName}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(agents[0].dimensionScores).map(([key, score]) => {
-                const labels: Record<string, string> = {
-                  rapport: 'Rapport Building',
-                  needsDiscovery: 'Needs Discovery',
-                  productKnowledge: 'Product Knowledge',
-                  objectionHandling: 'Objection Handling',
-                  closing: 'Closing Techniques',
-                  compliance: 'Compliance',
-                  professionalism: 'Professionalism',
-                  followUp: 'Follow-Up',
-                };
+      {/* Team Breakdown */}
+      {agents.length > 0 && agents.some(a => a.completedCalls > 0) && (() => {
+        // Calculate team averages across all agents with completed calls
+        const agentsWithData = agents.filter(a => a.completedCalls > 0);
+        const teamAverages = {
+          rapport: 0,
+          needsDiscovery: 0,
+          productKnowledge: 0,
+          objectionHandling: 0,
+          closing: 0,
+          professionalism: 0,
+          followUp: 0,
+        };
 
-                return (
-                  <div key={key} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{labels[key]}</span>
-                      <span className={`font-bold ${getScoreColor(score)}`}>
-                        {score.toFixed(1)}/10
-                      </span>
+        const teamComplianceAverages = {
+          callOpeningCompliance: 0,
+          dataProtectionCompliance: 0,
+          mandatoryDisclosures: 0,
+          tcfCompliance: 0,
+          salesProcessCompliance: 0,
+          complaintsHandling: 0,
+        };
+
+        agentsWithData.forEach(agent => {
+          teamAverages.rapport += agent.dimensionScores.rapport;
+          teamAverages.needsDiscovery += agent.dimensionScores.needsDiscovery;
+          teamAverages.productKnowledge += agent.dimensionScores.productKnowledge;
+          teamAverages.objectionHandling += agent.dimensionScores.objectionHandling;
+          teamAverages.closing += agent.dimensionScores.closing;
+          teamAverages.professionalism += agent.dimensionScores.professionalism;
+          teamAverages.followUp += agent.dimensionScores.followUp;
+
+          Object.keys(teamComplianceAverages).forEach(key => {
+            teamComplianceAverages[key as keyof typeof teamComplianceAverages] +=
+              agent.complianceDimensionScores[key as keyof typeof agent.complianceDimensionScores];
+          });
+        });
+
+        Object.keys(teamAverages).forEach(key => {
+          teamAverages[key as keyof typeof teamAverages] /= agentsWithData.length;
+        });
+
+        Object.keys(teamComplianceAverages).forEach(key => {
+          teamComplianceAverages[key as keyof typeof teamComplianceAverages] /= agentsWithData.length;
+        });
+
+        const qaLabels: Record<string, string> = {
+          rapport: 'Rapport Building',
+          needsDiscovery: 'Needs Discovery',
+          productKnowledge: 'Product Knowledge',
+          objectionHandling: 'Objection Handling',
+          closing: 'Closing Techniques',
+          professionalism: 'Professionalism',
+          followUp: 'Follow-Up',
+        };
+
+        const complianceLabels: Record<string, string> = {
+          callOpeningCompliance: 'Call Opening Compliance',
+          dataProtectionCompliance: 'Data Protection Compliance',
+          mandatoryDisclosures: 'Mandatory Disclosures',
+          tcfCompliance: 'TCF Compliance',
+          salesProcessCompliance: 'Sales Process Compliance',
+          complaintsHandling: 'Complaints Handling',
+        };
+
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Team Breakdown</CardTitle>
+              <CardDescription>
+                Average scores across all {agentsWithData.length} agent{agentsWithData.length > 1 ? 's' : ''} with completed analyses
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* General QA Dimensions */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">General QA Dimensions</h3>
+                <div className="space-y-3">
+                  {Object.entries(teamAverages).map(([key, score]) => (
+                    <div key={key} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{qaLabels[key]}</span>
+                        <span className={`font-bold ${getScoreColor(score)}`}>
+                          {score.toFixed(1)}/10
+                        </span>
+                      </div>
+                      <Progress value={score * 10} className="h-2" />
                     </div>
-                    <Progress value={score * 10} className="h-2" />
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  ))}
+                </div>
+              </div>
+
+              {/* UK Compliance Dimensions */}
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">UK Compliance Dimensions</h3>
+                <div className="space-y-3">
+                  {Object.entries(teamComplianceAverages).map(([key, score]) => (
+                    <div key={key} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{complianceLabels[key]}</span>
+                        <span className={`font-bold ${getScoreColor(score)}`}>
+                          {score.toFixed(1)}/10
+                        </span>
+                      </div>
+                      <Progress value={score * 10} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }

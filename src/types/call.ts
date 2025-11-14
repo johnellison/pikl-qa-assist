@@ -22,9 +22,10 @@ export interface Call {
   status: CallStatus;
   transcriptUrl?: string;
   analysisUrl?: string;
-  overallScore?: number;
-  callType?: 'new_business_sales' | 'renewals' | 'mid_term_adjustment' | 'claims_inquiry' | 'complaints' | 'general_inquiry';
+  overallScore?: number; // Weighted average (70% QA + 30% Compliance)
+  qaScore?: number; // Average of 7 core QA dimensions
   complianceScore?: number; // Average of UK compliance dimensions
+  callType?: 'new_business_sales' | 'renewals' | 'mid_term_adjustment' | 'claims_inquiry' | 'complaints' | 'general_inquiry';
   createdAt: Date;
   updatedAt: Date;
   errorMessage?: string;

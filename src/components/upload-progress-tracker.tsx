@@ -266,7 +266,7 @@ export function UploadProgressTracker({
           <div className="space-y-2">
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Transcribing audio with OpenAI Whisper...
+              Transcribing audio with AssemblyAI...
             </div>
             <div className="text-xs text-muted-foreground">
               Elapsed: {formatElapsedTime(elapsedTime)} • {getEstimatedTime('transcribing')}

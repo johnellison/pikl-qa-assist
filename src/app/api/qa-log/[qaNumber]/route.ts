@@ -16,9 +16,10 @@ import type { QALogUpdatePayload } from '@/types/qa-log';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { qaNumber: string } }
+  { params }: { params: Promise<{ qaNumber: string }> }
 ) {
   try {
+    const { qaNumber } = await params;
     const body = await request.json();
     const updates: QALogUpdatePayload = {};
 
@@ -37,7 +38,7 @@ export async function PATCH(
     }
 
     // Update entry
-    const updatedEntry = await updateQALogEntry(params.qaNumber, updates, 'user');
+    const updatedEntry = await updateQALogEntry(qaNumber, updates, 'user');
 
     if (!updatedEntry) {
       return NextResponse.json(
