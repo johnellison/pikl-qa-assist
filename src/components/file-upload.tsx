@@ -11,8 +11,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { parseCallFilename } from '@/lib/metadata-parser';
 import { UploadProgressTracker } from '@/components/upload-progress-tracker';
 import type { UploadProgress, CallMetadata } from '@/types';
-import Uppy from '@uppy/core';
-import Tus from '@uppy/tus';
 
 interface FileUploadProps {
   maxFiles?: number;
@@ -37,94 +35,6 @@ export function FileUpload({
   const [errors, setErrors] = useState<string[]>([]);
   const [metadata, setMetadata] = useState<Record<string, CallMetadata>>({});
   const [uploadedCalls, setUploadedCalls] = useState<Array<{ callId: string; filename: string }>>([]);
-  const [uppy, setUppy] = useState<Uppy | null>(null);
-
-  // Initialize Uppy
-  useEffect(() => {
-    const uppyInstance = new Uppy({
-      restrictions: {
-        maxFileSize: MAX_FILE_SIZE,
-        maxNumberOfFiles: MAX_FILES,
-        allowedFileTypes: ['.wav', 'audio/wav', 'audio/x-wav'],
-      },
-      autoProceed: false,
-    }).use(Tus, {
-      endpoint: '/api/upload/tus',
-      chunkSize: 5 * 1024 * 1024, // 5MB chunks
-      retryDelays: [0, 1000, 3000, 5000],
-      limit: 3, // Max 3 concurrent uploads
-    });
-
-    // Track upload progress
-    uppyInstance.on('upload-progress', (file, progress) => {
-      if (!file || !progress.bytesTotal) return;
-      const percent = Math.round((progress.bytesUploaded / progress.bytesTotal) * 100);
-      setUploadProgress((prev) => ({
-        ...prev,
-        [file.name]: {
-          filename: file.name,
-          progress: percent,
-          status: 'uploading',
-        },
-      }));
-    });
-
-    // Handle upload success
-    uppyInstance.on('upload-success', (file) => {
-      if (!file) return;
-      console.log('[UPLOAD] File uploaded successfully:', file.name);
-      setUploadProgress((prev) => ({
-        ...prev,
-        [file.name]: {
-          filename: file.name,
-          progress: 100,
-          status: 'complete',
-        },
-      }));
-    });
-
-    // Handle upload error
-    uppyInstance.on('upload-error', (file, error) => {
-      if (!file) return;
-      console.error('[UPLOAD] Upload error:', file.name, error);
-      setUploadProgress((prev) => ({
-        ...prev,
-        [file.name]: {
-          filename: file.name,
-          progress: 0,
-          status: 'error',
-          error: error.message,
-        },
-      }));
-    });
-
-    // Handle all uploads complete
-    uppyInstance.on('complete', (result) => {
-      console.log('[UPLOAD] All uploads complete:', result);
-
-      // Clear files after a delay
-      setTimeout(() => {
-        setFiles([]);
-        uppyInstance.cancelAll();
-      }, 2000);
-
-      // Notify parent
-      if (onUpload && files.length > 0) {
-        onUpload(files);
-      }
-    });
-
-    setUppy(uppyInstance);
-
-    return () => {
-      try {
-        uppyInstance.cancelAll();
-        // Event listeners will be garbage collected
-      } catch (err) {
-        console.error('Error cleaning up Uppy:', err);
-      }
-    };
-  }, []);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[], rejectedFiles: any[]) => {
@@ -190,24 +100,6 @@ export function FileUpload({
       setFiles(newFiles);
       setMetadata(newMetadata);
 
-      // Add files to Uppy
-      if (uppy) {
-        acceptedFiles.forEach((file) => {
-          try {
-            uppy.addFile({
-              name: file.name,
-              type: file.type,
-              data: file,
-              meta: {
-                filename: file.name,
-              },
-            });
-          } catch (err) {
-            console.error('Error adding file to Uppy:', err);
-          }
-        });
-      }
-
       // Initialize progress for new files
       const newProgress = { ...uploadProgress };
       acceptedFiles.forEach((file) => {
@@ -219,7 +111,7 @@ export function FileUpload({
       });
       setUploadProgress(newProgress);
     },
-    [files, maxFiles, uploadProgress, metadata, uppy]
+    [files, maxFiles, uploadProgress, metadata]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -239,25 +131,123 @@ export function FileUpload({
     const newMetadata = { ...metadata };
     delete newMetadata[fileName];
     setMetadata(newMetadata);
+  };
 
-    // Remove from Uppy
-    if (uppy) {
-      const uppyFile = uppy.getFiles().find((f) => f.name === fileName);
-      if (uppyFile) {
-        uppy.removeFile(uppyFile.id);
+  const uploadFileInChunks = async (file: File) => {
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+    console.log(`[UPLOAD] Uploading ${file.name} in ${totalChunks} chunks`);
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+
+      const formData = new FormData();
+      formData.append('chunk', chunk);
+      formData.append('filename', file.name);
+      formData.append('chunkIndex', chunkIndex.toString());
+      formData.append('totalChunks', totalChunks.toString());
+
+      const response = await fetch('/api/upload/chunk', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chunk ${chunkIndex + 1} upload failed`);
       }
+
+      // Update progress
+      const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+      setUploadProgress((prev) => ({
+        ...prev,
+        [file.name]: {
+          filename: file.name,
+          progress,
+          status: 'uploading',
+        },
+      }));
+
+      console.log(`[UPLOAD] Chunk ${chunkIndex + 1}/${totalChunks} uploaded (${progress}%)`);
     }
+
+    // Get final response
+    const result = await fetch('/api/upload/chunk', {
+      method: 'POST',
+      body: (() => {
+        const fd = new FormData();
+        fd.append('chunk', new Blob());
+        fd.append('filename', file.name);
+        fd.append('chunkIndex', (totalChunks - 1).toString());
+        fd.append('totalChunks', totalChunks.toString());
+        return fd;
+      })(),
+    }).then((r) => r.json());
+
+    return result;
   };
 
   const handleUpload = async () => {
-    if (files.length === 0 || !uppy) return;
+    if (files.length === 0) return;
 
-    try {
-      await uppy.upload();
-    } catch (error) {
-      console.error('Upload error:', error);
-      setErrors(['Upload failed. Please try again.']);
+    const uploadedCallsList: Array<{ callId: string; filename: string }> = [];
+
+    for (const file of files) {
+      try {
+        setUploadProgress((prev) => ({
+          ...prev,
+          [file.name]: {
+            filename: file.name,
+            progress: 0,
+            status: 'uploading',
+          },
+        }));
+
+        const result = await uploadFileInChunks(file);
+
+        if (result.success) {
+          setUploadProgress((prev) => ({
+            ...prev,
+            [file.name]: {
+              filename: file.name,
+              progress: 100,
+              status: 'complete',
+            },
+          }));
+
+          uploadedCallsList.push({
+            callId: result.data.call.id,
+            filename: result.data.call.filename,
+          });
+        } else {
+          throw new Error(result.error || 'Upload failed');
+        }
+      } catch (error) {
+        console.error(`Upload error for ${file.name}:`, error);
+        setUploadProgress((prev) => ({
+          ...prev,
+          [file.name]: {
+            filename: file.name,
+            progress: 0,
+            status: 'error',
+            error: (error as Error).message,
+          },
+        }));
+      }
     }
+
+    if (uploadedCallsList.length > 0) {
+      setUploadedCalls((prev) => [...uploadedCallsList, ...prev]);
+      if (onUpload) {
+        onUpload(files);
+      }
+    }
+
+    setTimeout(() => {
+      setFiles([]);
+    }, 1000);
   };
 
   const formatFileSize = (bytes: number) => {
