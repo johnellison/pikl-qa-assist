@@ -48,12 +48,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Convert Web Stream to Node.js stream
-    const { Readable } = await import('stream');
-    const nodeStream = Readable.fromWeb(req.body as any);
-
     // Parse multipart form data with streaming
-    await new Promise<void>((resolve, reject) => {
+    await new Promise<void>(async (resolve, reject) => {
       const bb = busboy({
         headers: {
           'content-type': contentType,
@@ -133,11 +129,33 @@ export async function POST(req: NextRequest) {
         resolve();
       });
 
-      // Pipe request body to busboy
-      if (nodeStream) {
-        nodeStream.pipe(bb);
-      } else {
-        reject(new Error('Request body stream is null'));
+      // Read request body and feed to busboy
+      try {
+        if (!req.body) {
+          reject(new Error('Request body is null'));
+          return;
+        }
+
+        const reader = req.body.getReader();
+
+        async function pump() {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                bb.end();
+                break;
+              }
+              bb.write(value);
+            }
+          } catch (err) {
+            reject(err);
+          }
+        }
+
+        pump();
+      } catch (err) {
+        reject(err);
       }
     });
 
