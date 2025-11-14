@@ -100,6 +100,7 @@ export function Sidebar() {
                         <Link
                           key={subItem.href}
                           href={subItem.href}
+                          prefetch={false}
                           className={cn(
                             'flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
                             isSubActive

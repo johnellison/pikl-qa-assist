@@ -12,9 +12,14 @@ const ALLOWED_MIME_TYPES = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/mpe
  */
 export async function POST(req: NextRequest) {
   try {
+    console.log('[UPLOAD] Request received at', new Date().toISOString());
+
     // Get the form data directly
     const formData = await req.formData();
+    console.log('[UPLOAD] FormData parsed');
+
     const files = formData.getAll('files') as File[];
+    console.log('[UPLOAD] Files count:', files.length);
 
     if (!files || files.length === 0) {
       return NextResponse.json<ApiResponse<null>>(
@@ -31,6 +36,8 @@ export async function POST(req: NextRequest) {
 
     for (const file of files) {
       try {
+        console.log(`[UPLOAD] Processing file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB, type: ${file.type}`);
+
         // Validate file type
         if (!ALLOWED_MIME_TYPES.includes(file.type)) {
           errors.push(`${file.name}: Invalid file type. Only WAV files are accepted.`);
@@ -39,7 +46,7 @@ export async function POST(req: NextRequest) {
 
         // Validate file size (allow up to 50MB, will compress if needed)
         if (file.size > MAX_FILE_SIZE) {
-          errors.push(`${file.name}: File size exceeds 50MB upload limit.`);
+          errors.push(`${file.name}: File size exceeds 100MB upload limit.`);
           continue;
         }
 
@@ -53,11 +60,15 @@ export async function POST(req: NextRequest) {
         const metadata = parseResult.metadata!;
 
         // Read file buffer
+        console.log(`[UPLOAD] Reading file buffer for ${file.name}...`);
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
+        console.log(`[UPLOAD] Buffer created, size: ${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
 
         // Save file to uploads directory
+        console.log(`[UPLOAD] Saving file to disk...`);
         const savedPath = await saveUploadedFile(buffer, file.name);
+        console.log(`[UPLOAD] File saved to: ${savedPath}`);
 
         // No compression needed - AssemblyAI supports files up to 5GB
         // Whisper's 25MB limit is no longer relevant since we use AssemblyAI by default
@@ -83,10 +94,13 @@ export async function POST(req: NextRequest) {
 
         // Trigger transcription asynchronously (don't wait)
         // Use AssemblyAI by default for better speaker diarization
-        // Use localhost for internal API calls to avoid Railway egress fees
-        const port = process.env.PORT || 3000;
-        const internalUrl = `http://localhost:${port}`;
-        fetch(`${internalUrl}/api/transcribe`, {
+        // Determine the base URL based on environment
+        const isProduction = process.env.NODE_ENV === 'production';
+        const baseUrl = isProduction
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'pikl-qa-assist-production.up.railway.app'}`
+          : `http://localhost:${process.env.PORT || 3000}`;
+
+        fetch(`${baseUrl}/api/transcribe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
