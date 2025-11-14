@@ -3,7 +3,6 @@ import { parseCallFilename } from '@/lib/metadata-parser';
 import { addCall, generateCallId, ensureDirectories } from '@/lib/storage';
 import type { Call, ApiResponse } from '@/types';
 import busboy from 'busboy';
-import { Writable } from 'stream';
 import fs from 'fs';
 import path from 'path';
 
@@ -49,8 +48,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Convert Request to Node.js stream
-    const nodeStream = req.body as unknown as NodeJS.ReadableStream;
+    // Convert Web Stream to Node.js stream
+    const { Readable } = await import('stream');
+    const nodeStream = Readable.fromWeb(req.body as any);
 
     // Parse multipart form data with streaming
     await new Promise<void>((resolve, reject) => {
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
 
       // Pipe request body to busboy
       if (nodeStream) {
-        nodeStream.pipe(bb as unknown as Writable);
+        nodeStream.pipe(bb);
       } else {
         reject(new Error('Request body stream is null'));
       }
