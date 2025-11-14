@@ -38,13 +38,14 @@ DATABASE_URL=file:/app/data/db/qa-assist.db
 
 This is **CRITICAL** - without this, your database and files will be lost on every deploy!
 
-1. In Railway project, click **"Settings"** tab
-2. Scroll to **"Volumes"**
-3. Click **"+ New Volume"**
-4. Configure:
-   - **Mount Path:** `/app/data`
-   - **Name:** `qa-assist-data` (or any name)
-5. Click **"Add"**
+**To create a volume:**
+
+1. Open the **Command Palette** with `⌘K` (Mac) or `Ctrl+K` (Windows/Linux)
+   - OR right-click on the project canvas
+2. Select **"New Volume"**
+3. **Select your service** (pikl-qa-assist)
+4. Set **Mount Path:** `/app/data`
+5. Click **"Add"** or **"Create"**
 
 This volume will persist:
 - SQLite database (`/app/data/db/qa-assist.db`)
