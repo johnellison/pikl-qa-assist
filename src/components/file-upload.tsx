@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, FileAudio, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { parseCallFilename, validateBatch } from '@/lib/metadata-parser';
+import { parseCallFilename } from '@/lib/metadata-parser';
 import { UploadProgressTracker } from '@/components/upload-progress-tracker';
 import type { UploadProgress, CallMetadata } from '@/types';
+import Uppy from '@uppy/core';
+import Tus from '@uppy/tus';
 
 interface FileUploadProps {
   maxFiles?: number;
@@ -18,7 +20,7 @@ interface FileUploadProps {
   onUpload?: (files: File[]) => void;
 }
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (AssemblyAI supports up to 5GB)
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const MAX_FILES = 50;
 const ACCEPTED_TYPES = {
   'audio/wav': ['.wav'],
@@ -35,6 +37,89 @@ export function FileUpload({
   const [errors, setErrors] = useState<string[]>([]);
   const [metadata, setMetadata] = useState<Record<string, CallMetadata>>({});
   const [uploadedCalls, setUploadedCalls] = useState<Array<{ callId: string; filename: string }>>([]);
+  const [uppy, setUppy] = useState<Uppy | null>(null);
+
+  // Initialize Uppy
+  useEffect(() => {
+    const uppyInstance = new Uppy({
+      restrictions: {
+        maxFileSize: MAX_FILE_SIZE,
+        maxNumberOfFiles: MAX_FILES,
+        allowedFileTypes: ['.wav', 'audio/wav', 'audio/x-wav'],
+      },
+      autoProceed: false,
+    }).use(Tus, {
+      endpoint: '/api/upload/tus',
+      chunkSize: 5 * 1024 * 1024, // 5MB chunks
+      retryDelays: [0, 1000, 3000, 5000],
+      limit: 3, // Max 3 concurrent uploads
+    });
+
+    // Track upload progress
+    uppyInstance.on('upload-progress', (file, progress) => {
+      if (!file) return;
+      const percent = Math.round((progress.bytesUploaded / progress.bytesTotal) * 100);
+      setUploadProgress((prev) => ({
+        ...prev,
+        [file.name]: {
+          filename: file.name,
+          progress: percent,
+          status: 'uploading',
+        },
+      }));
+    });
+
+    // Handle upload success
+    uppyInstance.on('upload-success', (file) => {
+      if (!file) return;
+      console.log('[UPLOAD] File uploaded successfully:', file.name);
+      setUploadProgress((prev) => ({
+        ...prev,
+        [file.name]: {
+          filename: file.name,
+          progress: 100,
+          status: 'complete',
+        },
+      }));
+    });
+
+    // Handle upload error
+    uppyInstance.on('upload-error', (file, error) => {
+      if (!file) return;
+      console.error('[UPLOAD] Upload error:', file.name, error);
+      setUploadProgress((prev) => ({
+        ...prev,
+        [file.name]: {
+          filename: file.name,
+          progress: 0,
+          status: 'error',
+          error: error.message,
+        },
+      }));
+    });
+
+    // Handle all uploads complete
+    uppyInstance.on('complete', (result) => {
+      console.log('[UPLOAD] All uploads complete:', result);
+
+      // Clear files after a delay
+      setTimeout(() => {
+        setFiles([]);
+        uppyInstance.cancelAll();
+      }, 2000);
+
+      // Notify parent
+      if (onUpload && files.length > 0) {
+        onUpload(files);
+      }
+    });
+
+    setUppy(uppyInstance);
+
+    return () => {
+      uppyInstance.close();
+    };
+  }, []);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[], rejectedFiles: any[]) => {
@@ -48,7 +133,7 @@ export function FileUpload({
         const file = rejection.file;
         rejection.errors.forEach((error: any) => {
           if (error.code === 'file-too-large') {
-            newErrors.push(`${file.name}: File size exceeds 50MB upload limit`);
+            newErrors.push(`${file.name}: File size exceeds 100MB upload limit`);
           } else if (error.code === 'file-invalid-type') {
             newErrors.push(`${file.name}: Only WAV files are accepted`);
           } else {
@@ -100,6 +185,24 @@ export function FileUpload({
       setFiles(newFiles);
       setMetadata(newMetadata);
 
+      // Add files to Uppy
+      if (uppy) {
+        acceptedFiles.forEach((file) => {
+          try {
+            uppy.addFile({
+              name: file.name,
+              type: file.type,
+              data: file,
+              meta: {
+                filename: file.name,
+              },
+            });
+          } catch (err) {
+            console.error('Error adding file to Uppy:', err);
+          }
+        });
+      }
+
       // Initialize progress for new files
       const newProgress = { ...uploadProgress };
       acceptedFiles.forEach((file) => {
@@ -111,7 +214,7 @@ export function FileUpload({
       });
       setUploadProgress(newProgress);
     },
-    [files, maxFiles, uploadProgress, metadata]
+    [files, maxFiles, uploadProgress, metadata, uppy]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -131,90 +234,25 @@ export function FileUpload({
     const newMetadata = { ...metadata };
     delete newMetadata[fileName];
     setMetadata(newMetadata);
+
+    // Remove from Uppy
+    if (uppy) {
+      const uppyFile = uppy.getFiles().find((f) => f.name === fileName);
+      if (uppyFile) {
+        uppy.removeFile(uppyFile.id);
+      }
+    }
   };
 
   const handleUpload = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0 || !uppy) return;
 
-    const uploadedCallsList: Array<{ callId: string; filename: string }> = [];
-    const progressUpdates = { ...uploadProgress };
-
-    // Process files one at a time in a queue
-    for (const file of files) {
-      // Update to uploading status
-      progressUpdates[file.name] = { ...progressUpdates[file.name], status: 'uploading', progress: 50 };
-      setUploadProgress({ ...progressUpdates });
-
-      try {
-        // Create FormData for single file
-        const formData = new FormData();
-        formData.append('files', file);
-
-        // Upload to API
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        if (result.success && result.data?.calls && result.data.calls.length > 0) {
-          // Mark file as complete
-          progressUpdates[file.name] = {
-            ...progressUpdates[file.name],
-            status: 'complete',
-            progress: 100,
-          };
-          setUploadProgress({ ...progressUpdates });
-
-          // Add to uploaded calls list
-          uploadedCallsList.push({
-            callId: result.data.calls[0].id,
-            filename: result.data.calls[0].filename,
-          });
-        } else {
-          // Mark file as error
-          progressUpdates[file.name] = {
-            ...progressUpdates[file.name],
-            status: 'error',
-            progress: 0,
-            error: result.error || 'Upload failed',
-          };
-          setUploadProgress({ ...progressUpdates });
-        }
-
-        // Small delay between uploads to avoid overwhelming the server
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-      } catch (error) {
-        console.error(`Upload error for ${file.name}:`, error);
-
-        // Mark as error
-        progressUpdates[file.name] = {
-          ...progressUpdates[file.name],
-          status: 'error',
-          progress: 0,
-          error: 'Network error',
-        };
-        setUploadProgress({ ...progressUpdates });
-      }
+    try {
+      await uppy.upload();
+    } catch (error) {
+      console.error('Upload error:', error);
+      setErrors(['Upload failed. Please try again.']);
     }
-
-    // Set uploaded calls for progress tracking
-    if (uploadedCallsList.length > 0) {
-      // Prepend new uploads to existing list (newest at top)
-      setUploadedCalls(prev => [...uploadedCallsList, ...prev]);
-
-      // Call parent callback if provided
-      if (onUpload) {
-        onUpload(files);
-      }
-    }
-
-    // Clear files after upload completes
-    setTimeout(() => {
-      setFiles([]);
-    }, 1000);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -255,7 +293,7 @@ export function FileUpload({
           )}
 
           <div className="mt-4 text-xs text-muted-foreground text-center space-y-1">
-            <p>Maximum file size: 50MB</p>
+            <p>Maximum file size: 100MB</p>
             <p>Maximum files per batch: {maxFiles}</p>
             <p>Accepted format: WAV audio files</p>
           </div>
