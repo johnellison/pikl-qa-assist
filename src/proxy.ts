@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 const AUTH_COOKIE_NAME = 'pikl-qa-auth';
 const AUTH_TOKEN = 'authenticated-pikl-2025';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow access to login page, auth API, and admin API (admin has its own auth)
