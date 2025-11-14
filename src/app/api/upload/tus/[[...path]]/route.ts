@@ -18,7 +18,7 @@ const tusServer = new Server({
   // Allow files up to 100MB
   maxSize: 100 * 1024 * 1024,
   // Handle upload completion
-  async onUploadFinish(req, res, upload: Upload) {
+  async onUploadFinish(req, upload: Upload) {
     console.log('[TUS] Upload complete:', upload.id);
 
     try {
@@ -30,7 +30,7 @@ const tusServer = new Server({
       const parseResult = parseCallFilename(filename as string);
       if (!parseResult.success) {
         console.error('[TUS] Failed to parse filename:', parseResult.error);
-        return;
+        return { status_code: 400, body: 'Invalid filename format' };
       }
 
       const metadata = parseResult.metadata!;
@@ -68,8 +68,11 @@ const tusServer = new Server({
           provider: 'assemblyai',
         }),
       }).catch((err) => console.error('[TUS] Failed to trigger transcription:', err));
+
+      return { status_code: 200 };
     } catch (error) {
       console.error('[TUS] Error in onUploadFinish:', error);
+      return { status_code: 500, body: 'Internal server error' };
     }
   },
 });

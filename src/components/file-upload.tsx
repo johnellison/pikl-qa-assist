@@ -57,7 +57,7 @@ export function FileUpload({
 
     // Track upload progress
     uppyInstance.on('upload-progress', (file, progress) => {
-      if (!file) return;
+      if (!file || !progress.bytesTotal) return;
       const percent = Math.round((progress.bytesUploaded / progress.bytesTotal) * 100);
       setUploadProgress((prev) => ({
         ...prev,
@@ -119,11 +119,7 @@ export function FileUpload({
     return () => {
       try {
         uppyInstance.cancelAll();
-        // Clean up event listeners
-        uppyInstance.off('upload-progress');
-        uppyInstance.off('upload-success');
-        uppyInstance.off('upload-error');
-        uppyInstance.off('complete');
+        // Event listeners will be garbage collected
       } catch (err) {
         console.error('Error cleaning up Uppy:', err);
       }
