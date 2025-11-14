@@ -571,11 +571,170 @@
         ],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "Implement Production Deployment Strategy",
+        "description": "Research, evaluate, and implement a production deployment strategy for the QA Assist application, migrating from SQLite/local storage to a cloud-based infrastructure with appropriate database, storage, and security solutions.",
+        "details": "1. **Platform Evaluation**:\n   - Compare Vercel, Railway, Render, self-hosted VPS, and cloud platforms (AWS/GCP/Azure)\n   - Create comparison matrix evaluating cost, scalability, persistence, and compliance features\n   - Document pros/cons for each platform considering our Next.js application\n\n2. **Database Migration (SQLite to PostgreSQL)**:\n   - Update Prisma schema for PostgreSQL compatibility\n   - Create migration scripts to preserve existing data\n   - Implement database connection pooling for production\n   - Set up automated backup procedures\n   - Configure database security (network policies, encryption)\n\n3. **Storage Migration (Local to Cloud)**:\n   - Implement S3/R2/Cloud Storage integration for audio files\n   - Create upload/download utilities with proper error handling\n   - Update API routes to use cloud storage instead of local filesystem\n   - Implement signed URLs for secure file access\n   - Add file lifecycle management (retention policies)\n\n4. **Security Implementation**:\n   - Configure HTTPS/SSL certificates\n   - Implement environment variable encryption\n   - Set up proper access control for audio files\n   - Ensure GDPR compliance for UK insurance data\n   - Configure data residency to meet UK/EU requirements\n   - Implement audit logging for compliance\n\n5. **Cost Analysis and Optimization**:\n   - Calculate database hosting costs based on expected usage\n   - Estimate file storage costs for audio files (2-5MB each)\n   - Project compute/serverless costs based on traffic patterns\n   - Document bandwidth costs and optimization strategies\n   - Provide monthly estimates for 100-500 calls\n\n6. **Deployment Implementation**:\n   - Create step-by-step deployment documentation\n   - Implement CI/CD pipeline using GitHub Actions\n   - Set up environment variable management\n   - Configure monitoring and alerting\n   - Document rollback procedures\n   - Create Infrastructure as Code using Terraform for selected platform\n\n7. **Testing and Validation**:\n   - Deploy to staging environment\n   - Validate database migrations with test data\n   - Verify file upload/download functionality\n   - Test security configurations\n   - Perform load testing with simulated traffic",
+        "testStrategy": "1. **Platform Selection Validation**:\n   - Deploy test application to each shortlisted platform\n   - Verify database connectivity and persistence\n   - Test file upload/download functionality\n   - Measure response times and resource utilization\n   - Validate that the selected platform meets all requirements\n\n2. **Database Migration Testing**:\n   - Create test dataset in SQLite\n   - Run migration scripts to PostgreSQL\n   - Verify data integrity after migration\n   - Test all database queries and operations\n   - Validate performance under load\n   - Verify backup and restore procedures\n\n3. **Storage Migration Testing**:\n   - Upload sample audio files to cloud storage\n   - Verify correct metadata and content-type\n   - Test download functionality with various file sizes\n   - Validate signed URL generation and expiration\n   - Verify access controls prevent unauthorized access\n   - Test concurrent uploads/downloads\n\n4. **Security Testing**:\n   - Perform security scan of deployed application\n   - Validate SSL configuration (A+ rating on SSL Labs)\n   - Test environment variable encryption\n   - Verify GDPR compliance features\n   - Validate data residency configuration\n   - Test audit logging functionality\n\n5. **Performance and Cost Testing**:\n   - Simulate production load with 500 calls\n   - Monitor resource utilization and costs\n   - Validate cost projections against actual usage\n   - Identify optimization opportunities\n   - Test scaling behavior under load\n\n6. **End-to-End Deployment Testing**:\n   - Follow deployment documentation to set up fresh environment\n   - Verify CI/CD pipeline functionality\n   - Test rollback procedures\n   - Validate monitoring and alerting\n   - Perform disaster recovery test",
+        "status": "pending",
+        "dependencies": [
+          11,
+          20,
+          21,
+          23
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Evaluate Vercel + Supabase Free Tier Limitations",
+            "description": "Analyze the free tier limitations of Vercel and Supabase to determine if they meet the requirements for the QA Assist application.",
+            "dependencies": [],
+            "details": "Create a detailed analysis document comparing Vercel's 100GB bandwidth and serverless functions with Supabase's 500MB database and 1GB file storage limits. Calculate expected usage based on 90+ calls (~200MB audio + database) and determine if free tier is sufficient for current and near-future needs. Document potential scaling issues and upgrade paths.",
+            "status": "pending",
+            "testStrategy": "Create test scenarios with simulated data loads to validate calculations. Compare with actual usage patterns from development environment."
+          },
+          {
+            "id": 2,
+            "title": "Evaluate Railway Paid Option",
+            "description": "Analyze the Railway paid option (~$20-40/month) for hosting the QA Assist application.",
+            "dependencies": [],
+            "details": "Document Railway's persistent storage capabilities for SQLite, pricing structure, and resource limits. Analyze the simpler migration path from current SQLite implementation. Evaluate single platform management benefits and scaling capabilities beyond free tier limits. Create a comparison matrix with the Vercel + Supabase option.",
+            "status": "pending",
+            "testStrategy": "Deploy a minimal test application to Railway to validate SQLite persistence and performance metrics."
+          },
+          {
+            "id": 3,
+            "title": "Create Platform Comparison Matrix and Final Recommendation",
+            "description": "Compile findings from platform evaluations into a comparison matrix and provide a final recommendation.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create a comprehensive comparison matrix of Vercel + Supabase vs Railway options, evaluating costs, scalability, persistence, compliance features, and migration complexity. Include pros/cons for each platform considering the Next.js application architecture. Provide a clear recommendation with justification based on technical and business requirements.",
+            "status": "pending",
+            "testStrategy": "Review matrix with stakeholders to validate completeness and accuracy of comparison criteria."
+          },
+          {
+            "id": 4,
+            "title": "Update Prisma Schema for PostgreSQL Compatibility",
+            "description": "Modify the existing Prisma schema to ensure compatibility with PostgreSQL if Supabase option is selected.",
+            "dependencies": [
+              3
+            ],
+            "details": "Review current SQLite-specific schema features and update for PostgreSQL compatibility. Modify data types, constraints, and relationships as needed. Update indexes and unique constraints to match PostgreSQL requirements. Test schema changes with a local PostgreSQL instance before deployment.",
+            "status": "pending",
+            "testStrategy": "Run Prisma migrations against a test PostgreSQL database and validate schema integrity. Verify all model relationships and constraints function as expected."
+          },
+          {
+            "id": 5,
+            "title": "Implement Database Migration Scripts",
+            "description": "Create scripts to migrate existing data from SQLite to PostgreSQL or configure SQLite persistence on Railway.",
+            "dependencies": [
+              4
+            ],
+            "details": "For Supabase: Develop export scripts to extract data from SQLite and import into PostgreSQL while preserving relationships and constraints. For Railway: Configure volume mounts for SQLite persistence. Include data validation steps to ensure integrity after migration. Create rollback procedures in case of migration failures.",
+            "status": "pending",
+            "testStrategy": "Test migration with production-like data set. Verify data integrity through automated comparison of source and target databases. Validate application functionality with migrated data."
+          },
+          {
+            "id": 6,
+            "title": "Implement Cloud Storage for Audio Files",
+            "description": "Migrate audio file storage from local filesystem to cloud storage (Supabase Storage or Railway volumes).",
+            "dependencies": [
+              3
+            ],
+            "details": "Develop utilities for uploading and downloading audio files to/from cloud storage. Implement proper error handling and retry logic. Update API routes to use cloud storage instead of local filesystem. Configure appropriate access controls and security settings. Implement file lifecycle management for retention policies.",
+            "status": "pending",
+            "testStrategy": "Test upload/download functionality with various file sizes. Verify error handling with simulated network failures. Validate security controls prevent unauthorized access."
+          },
+          {
+            "id": 7,
+            "title": "Configure Environment Variables and Secrets Management",
+            "description": "Set up secure environment variable management for production deployment.",
+            "dependencies": [
+              3
+            ],
+            "details": "Identify all required environment variables for production. Configure environment variable encryption for sensitive values. Set up secrets management in the selected platform (Vercel or Railway). Create documentation for environment variable requirements and management procedures. Implement validation to ensure all required variables are present at runtime.",
+            "status": "pending",
+            "testStrategy": "Validate environment configuration in staging environment. Test application behavior with missing or invalid environment variables."
+          },
+          {
+            "id": 8,
+            "title": "Implement CI/CD Pipeline with GitHub Actions",
+            "description": "Create a continuous integration and deployment pipeline using GitHub Actions.",
+            "dependencies": [
+              4,
+              5,
+              6,
+              7
+            ],
+            "details": "Configure GitHub Actions workflow for automated testing and deployment. Set up separate workflows for staging and production environments. Implement build caching to improve deployment speed. Configure environment-specific validation steps. Create notification system for deployment success/failure. Document the CI/CD process for team reference.",
+            "status": "pending",
+            "testStrategy": "Test the CI/CD pipeline with various scenarios including successful builds, test failures, and deployment issues. Validate rollback procedures."
+          },
+          {
+            "id": 9,
+            "title": "Configure Security Settings and Compliance Features",
+            "description": "Implement security configurations and ensure compliance with UK/EU data requirements.",
+            "dependencies": [
+              6,
+              7
+            ],
+            "details": "Configure HTTPS/SSL certificates for secure communication. Implement proper access control for audio files using signed URLs. Ensure GDPR compliance for UK insurance data. Configure data residency settings to meet UK/EU requirements. Implement audit logging for compliance tracking. Document security measures for compliance reviews.",
+            "status": "pending",
+            "testStrategy": "Conduct security testing including penetration testing and access control validation. Verify compliance with GDPR requirements through a compliance checklist."
+          },
+          {
+            "id": 10,
+            "title": "Set Up Monitoring and Alerting",
+            "description": "Implement monitoring and alerting systems for the production environment.",
+            "dependencies": [
+              8
+            ],
+            "details": "Configure application performance monitoring. Set up error tracking and reporting. Implement database and storage usage monitoring. Create alerting thresholds for critical metrics. Configure notification channels for alerts (email, Slack). Document monitoring dashboard access and alert response procedures.",
+            "status": "pending",
+            "testStrategy": "Test alerting by triggering threshold violations. Validate monitoring captures key performance metrics and error conditions."
+          },
+          {
+            "id": 11,
+            "title": "Perform Load Testing and Optimization",
+            "description": "Conduct load testing on the production environment and optimize performance.",
+            "dependencies": [
+              8,
+              9,
+              10
+            ],
+            "details": "Develop load testing scenarios based on expected usage patterns. Simulate concurrent users and API calls. Identify performance bottlenecks and implement optimizations. Test database query performance under load. Optimize file storage and retrieval operations. Document performance benchmarks and optimization results.",
+            "status": "pending",
+            "testStrategy": "Run load tests with gradually increasing concurrency to identify breaking points. Validate optimizations improve performance metrics."
+          },
+          {
+            "id": 12,
+            "title": "Create Comprehensive Deployment Documentation",
+            "description": "Develop detailed documentation for the production deployment process and maintenance procedures.",
+            "dependencies": [
+              3,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11
+            ],
+            "details": "Create step-by-step deployment guide for the selected platform. Document database migration procedures. Include file storage configuration steps. Detail environment variable setup. Document CI/CD pipeline usage. Create troubleshooting guide for common issues. Include rollback procedures for failed deployments. Document cost monitoring and optimization strategies.",
+            "status": "pending",
+            "testStrategy": "Validate documentation by having a team member follow the procedures to deploy to a test environment. Update documentation based on feedback."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-11-12T14:31:33.704Z",
-      "updated": "2025-11-14T11:20:18.462Z",
+      "updated": "2025-11-14T14:03:38.783Z",
       "description": "Tasks for master context"
     }
   }
