@@ -117,7 +117,16 @@ export function FileUpload({
     setUppy(uppyInstance);
 
     return () => {
-      uppyInstance.close();
+      try {
+        uppyInstance.cancelAll();
+        // Clean up event listeners
+        uppyInstance.off('upload-progress');
+        uppyInstance.off('upload-success');
+        uppyInstance.off('upload-error');
+        uppyInstance.off('complete');
+      } catch (err) {
+        console.error('Error cleaning up Uppy:', err);
+      }
     };
   }, []);
 
